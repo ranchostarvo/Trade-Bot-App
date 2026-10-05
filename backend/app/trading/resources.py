@@ -74,3 +74,26 @@ class DurableResourceCoordinator:
             raise DurableResourceRejected(
                 f"No durable exposure reservation exists for bot {bot_id} {symbol}."
             )
+
+
+    def reserve_pending_exposure(
+        self, order_id: str, bot_id: str, symbol: str, notional: Decimal
+    ) -> None:
+        if not self.store.reserve_pending_exposure_with_limits(
+            order_id,
+            bot_id,
+            symbol,
+            notional,
+            self.account_equity,
+            self.exposure_config.max_symbol_notional,
+            self.exposure_config.max_symbol_pct,
+        ):
+            raise DurableResourceRejected(
+                f"Pending exposure rejected for order {order_id}."
+            )
+
+    def release_pending_exposure(self, order_id: str) -> None:
+        if not self.store.release_pending_exposure(order_id):
+            raise DurableResourceRejected(
+                f"No pending exposure exists for order {order_id}."
+            )
