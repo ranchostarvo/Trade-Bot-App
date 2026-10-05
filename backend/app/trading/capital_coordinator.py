@@ -1,5 +1,8 @@
+import json
+import os
 from dataclasses import dataclass
 from decimal import Decimal
+from pathlib import Path
 
 from .risk import RiskRejected
 
@@ -11,11 +14,43 @@ class CapitalConfig:
 
 
 class PortfolioCapitalCoordinator:
-    """Fail-closed portfolio-wide capital reservation across many bots."""
+    """Fail-closed portfolio-wide persistent capital reservations."""
 
-    def __init__(self, config):
+    def __init__(self, config, path=None):
         self.config = config
-        self._reservations = {}
+        self.path = Path(path) if path is not None else None
+        self._reservations = self._read() if self.path is not None else {}
+
+    def _read(self):
+        if not self.path.exists():
+            return {}
+        try:
+            raw = json.loads(self.path.read_text())
+            if not isinstance(raw, dict):
+                raise ValueError("capital reservation root must be an object")
+            parsed = {}
+            for key, value in raw.items():
+                amount = Decimal(str(value))
+                if amount <= 0:
+                    raise ValueError("capital reservations must be positive")
+                parsed[str(key)] = amount
+            return parsed
+        except Exception as exc:
+            raise RiskRejected(
+                f"Unable to read capital reservations: {exc}"
+            ) from exc
+
+    def _write(self):
+        if self.path is None:
+            return
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.path.with_suffix(self.path.suffix + ".tmp")
+        temporary.write_text(json.dumps(
+            {key: str(value) for key, value in self._reservations.items()},
+            sort_keys=True,
+            indent=2,
+        ))
+        os.replace(temporary, self.path)
 
     @property
     def allocated(self):
@@ -42,7 +77,10 @@ class PortfolioCapitalCoordinator:
             raise RiskRejected("Insufficient unreserved portfolio cash.")
 
         self._reservations[reservation_id] = amount
+        self._write()
         return after
 
     def release(self, reservation_id):
-        return self._reservations.pop(str(reservation_id), Decimal("0"))
+        value = self._reservations.pop(str(reservation_id), Decimal("0"))
+        self._write()
+        return value
