@@ -125,7 +125,15 @@ class ExecutionEngine:
         else:
             payload["qty"] = approval["quantity"]
 
-        response = self.broker.submit_order(payload)
+        try:
+            response = self.broker.submit_order(payload)
+        except Exception as exc:
+            # Transmission is ambiguous once the broker call begins. Keep both
+            # idempotency and capital reservations intact for read-only recovery.
+            raise RiskRejected(
+                "Broker submission outcome is ambiguous; reservations retained "
+                f"for reconciliation: {exc}"
+            ) from exc
 
         return {
             **approval,
