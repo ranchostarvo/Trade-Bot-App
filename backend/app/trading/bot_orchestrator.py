@@ -26,9 +26,11 @@ class BotOrchestrator:
         if len(requests) > self.max_bots:
             raise RiskRejected("Bot batch exceeds configured bot limit.")
 
+        # Validate the complete batch before the first execution. Structural
+        # errors must never create a partially executed batch.
         seen_bots = set()
         seen_orders = set()
-        results = []
+        prepared = []
         for request in requests:
             bot_id = str(request.bot_id or "").strip()
             client_order_id = str(request.client_order_id or "").strip()
@@ -40,25 +42,15 @@ class BotOrchestrator:
                 raise RiskRejected("Duplicate client order ID in execution batch.")
             seen_bots.add(bot_id)
             seen_orders.add(client_order_id)
+            prepared.append((bot_id, client_order_id, request.order))
 
-            # Sequential fan-out is intentional for v1: shared portfolio capital
-            # reservations are observed before the next bot is allowed to execute.
+        results = []
+        for bot_id, client_order_id, order in prepared:
             try:
-                result = self.runtime.execute(
-                    request.order,
-                    client_order_id=client_order_id,
-                )
-                results.append({
-                    "bot_id": bot_id,
-                    "ok": True,
-                    "result": result,
-                })
+                result = self.runtime.execute(order, client_order_id=client_order_id)
+                results.append({"bot_id": bot_id, "ok": True, "result": result})
             except RiskRejected as exc:
-                results.append({
-                    "bot_id": bot_id,
-                    "ok": False,
-                    "error": str(exc),
-                })
+                results.append({"bot_id": bot_id, "ok": False, "error": str(exc)})
                 if self.stop_on_rejection:
                     break
         return results
