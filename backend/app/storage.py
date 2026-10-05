@@ -503,7 +503,7 @@ class SQLiteStore:
         with self._connect() as connection:
             rows = connection.execute(
                 f"""
-                SELECT order_id, state, rejection_reason
+                SELECT order_id, state, reason
                 FROM managed_orders
                 WHERE state IN ({placeholders})
                 ORDER BY order_id
@@ -514,6 +514,6 @@ class SQLiteStore:
         for row in rows:
             order = ManagedOrder(row["order_id"])
             order.state = OrderState(row["state"])
-            order.rejection_reason = row["rejection_reason"]
+            order.rejection_reason = row["reason"]
             orders.append(order)
         return orders
