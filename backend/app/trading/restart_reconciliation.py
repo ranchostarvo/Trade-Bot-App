@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from decimal import Decimal
 
-from .order_state import OrderState
+from .risk import OrderRequest
 
 
 class RestartReconciliationBlocked(RuntimeError):
@@ -9,14 +10,14 @@ class RestartReconciliationBlocked(RuntimeError):
 
 @dataclass
 class RestartBrokerReconciliation:
-    """Read-only broker verification for unresolved orders after restart."""
+    """Self-contained read-only broker verification after restart."""
 
     store: object
     broker: object
     order_reconciler: object
     kill_switch: object
 
-    def reconcile(self, contexts):
+    def reconcile(self):
         unresolved = self.store.load_unresolved_orders()
         if not unresolved:
             return []
@@ -24,21 +25,30 @@ class RestartBrokerReconciliation:
         self.kill_switch.engage(
             f"{len(unresolved)} unresolved broker order(s) require reconciliation."
         )
-        context_by_id = {item["order_id"]: item for item in contexts}
         failures = []
 
         for managed in unresolved:
-            context = context_by_id.get(managed.order_id)
+            context = self.store.load_order_recovery_context(managed.order_id)
             if context is None:
                 failures.append(f"{managed.order_id}:missing-context")
                 continue
+            broker_order_id = (context.get("broker_order_id") or "").strip()
+            if not broker_order_id:
+                failures.append(f"{managed.order_id}:missing-broker-order-id")
+                continue
             try:
-                status = self.broker.order_status(managed.order_id)
+                request = OrderRequest(
+                    symbol=context["symbol"],
+                    side=context["side"],
+                    quantity=Decimal(context["quantity"]),
+                    estimated_price=Decimal(context["estimated_price"]),
+                )
+                status = self.broker.order_status(broker_order_id)
                 self.order_reconciler.reconcile(
                     managed.order_id,
                     status,
                     context["bot_id"],
-                    context["request"],
+                    request,
                 )
             except Exception as exc:
                 failures.append(
@@ -54,6 +64,6 @@ class RestartBrokerReconciliation:
                 f"Restart reconciliation incomplete: {details}"
             )
 
-        # Deliberately do not reset the kill switch automatically.
-        # An operator must explicitly reauthorize trading after recovery.
+        # Deliberately keep the kill switch engaged. Recovery is not
+        # authorization to resume trading.
         return []
