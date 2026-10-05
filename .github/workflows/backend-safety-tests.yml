@@ -85,6 +85,7 @@ jobs:
           python test_virtual_broker.py
           python test_bot_orchestrator_preflight.py
           python test_bot_risk_profile_preflight.py
+          python test_100_bot_mixed_profile_preflight.py
           python test_readiness.py
           python test_readiness_summary.py
           python test_release_gate.py
