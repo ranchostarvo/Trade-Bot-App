@@ -4,14 +4,17 @@ from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from app.api.auth import require_control_token
-from app.audit import AuditLog
-from app.trading.orchestrator import BotSpec, FleetOrchestrator\nfrom app.trading.runtime import TradingRuntime\nfrom app.api.control_plane import ControlPlane
+from app.api.control_plane import ControlPlane
+from app.trading.orchestrator import BotSpec, FleetOrchestrator
+from app.trading.runtime import TradingRuntime
 
 app = FastAPI(title="Trade Bot Control API", version="0.1.0")
 
-# Development control plane. Broker submission remains disconnected.
-fleet = FleetOrchestrator(account_cash=Decimal("50000"))
-audit = AuditLog()
+# Development fallback remains broker-disconnected and fail-closed for trading readiness.
+_runtime = TradingRuntime.build(account_cash=Decimal("50000"))
+control_plane = ControlPlane.build(_runtime)
+fleet = control_plane.fleet
+audit = control_plane.audit
 
 
 class ProvisionRequest(BaseModel):
@@ -30,7 +33,12 @@ class ReauthorizeRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {\n        "status": "ok",\n        "broker_execution": False,\n        "trading_ready": control_plane.trading_ready,\n        "kill_switch": fleet.kill_switch.engaged,\n    }
+    return {
+        "status": "ok",
+        "broker_execution": False,
+        "trading_ready": control_plane.trading_ready,
+        "kill_switch": fleet.kill_switch.engaged,
+    }
 
 
 @app.get("/fleet/status", dependencies=[Depends(require_control_token)])
