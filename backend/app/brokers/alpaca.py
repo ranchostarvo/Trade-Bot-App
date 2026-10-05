@@ -94,6 +94,17 @@ class AlpacaClient:
             f"/v2/orders/{str(order_id).strip()}",
         )
 
+    def get_order_by_client_id(self, client_order_id):
+        client_order_id = str(client_order_id or "").strip()
+        if not client_order_id:
+            raise AlpacaError("Client order ID is required.")
+
+        return self._request(
+            "GET",
+            "/v2/orders:by_client_order_id",
+            params={"client_order_id": client_order_id},
+        )
+
     def get_position(self, symbol):
         symbol = str(symbol or "").strip().upper()
         if not symbol:
