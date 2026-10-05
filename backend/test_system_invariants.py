@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from app.trading.system_invariants import SystemInvariantChecker
 from app.trading.risk import RiskRejected
 
-registry=SimpleNamespace(all=lambda: [None]*100)
+registry=SimpleNamespace(all=lambda: [SimpleNamespace(bot_id=f"bot-{i}", enabled=(i % 2 == 0)) for i in range(100)])
 capital=SimpleNamespace(allocated=Decimal("10000"))
 exposure=SimpleNamespace(total_invested=Decimal("40000"))
 assert SystemInvariantChecker(capital,exposure,registry,50000).check()["combined_capital_ceiling"]
