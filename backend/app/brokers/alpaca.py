@@ -105,6 +105,18 @@ class AlpacaClient:
             params={"client_order_id": client_order_id},
         )
 
+    def get_calendar(self, start, end):
+        start = str(start or "").strip()
+        end = str(end or "").strip()
+        if not start or not end:
+            raise AlpacaError("Calendar start and end dates are required.")
+
+        return self._request(
+            "GET",
+            "/v2/calendar",
+            params={"start": start, "end": end},
+        )
+
     def get_position(self, symbol):
         symbol = str(symbol or "").strip().upper()
         if not symbol:
