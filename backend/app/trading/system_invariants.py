@@ -15,12 +15,18 @@ class SystemInvariantChecker:
     def check(self):
         reserved = Decimal(str(self.capital.allocated))
         invested = Decimal(str(self.exposure.total_invested))
-        configured = len(self.registry.all())
+        bots = self.registry.all()
+        configured = len(bots)
+        bot_ids = [bot.bot_id for bot in bots]
+        enabled = [bot for bot in bots if bot.enabled]
         checks = {
             "nonnegative_reserved": reserved >= 0,
             "nonnegative_invested": invested >= 0,
             "combined_capital_ceiling": reserved + invested <= self.max_total,
             "bot_limit": configured <= 100,
+            "unique_bot_ids": len(bot_ids) == len(set(bot_ids)),
+            "enabled_subset": len(enabled) <= configured,
+            "capital_ceiling_positive": self.max_total > 0,
         }
         failed = [name for name, ok in checks.items() if not ok]
         if failed:
