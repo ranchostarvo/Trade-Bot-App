@@ -76,6 +76,7 @@ jobs:
           python test_atomic_immediate_fill.py
           python test_capital_transition.py
           python test_capital_fill_checkpoint.py
+          python test_buy_transition_recovery.py
           python test_exposure_ledger.py
           python test_position_allocation.py
           python test_sell_transition_recovery.py
