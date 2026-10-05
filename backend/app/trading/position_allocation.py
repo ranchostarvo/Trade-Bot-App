@@ -69,6 +69,23 @@ class PositionAllocationBook:
             Decimal("0"),
         )
 
+    def record_allocated_buy(self, allocation_id, symbol, quantity, invested_notional):
+        """Persist mapping when exposure was already allocated by capital transition."""
+        key = str(allocation_id or "").strip()
+        symbol = str(symbol or "").strip().upper()
+        quantity = Decimal(str(quantity))
+        notional = Decimal(str(invested_notional))
+        if not key or not symbol or quantity <= 0 or notional <= 0:
+            raise RiskRejected("Valid buy allocation data is required.")
+        existing = self._positions.get(key)
+        if existing is not None:
+            if existing.symbol == symbol and existing.quantity == quantity and existing.invested_notional == notional:
+                return existing
+            raise RiskRejected("Conflicting position allocation.")
+        self._positions[key] = PositionAllocation(key, symbol, quantity, notional)
+        self._write()
+        return self._positions[key]
+
     def record_buy(self, allocation_id, symbol, quantity, invested_notional):
         key = str(allocation_id or "").strip()
         symbol = str(symbol or "").strip().upper()
