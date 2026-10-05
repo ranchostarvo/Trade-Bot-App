@@ -21,6 +21,7 @@ from .lifecycle import OrderLifecycleService
 from .order_journal import OrderJournal
 from .order_tracker import OrderTracker
 from .position_reconciler import PositionReconciler
+from .position_allocation import PositionAllocationBook
 from .position_recovery import PositionRecoveryManager
 from .position_snapshot import PositionSnapshotStore
 from .recovery import RecoveryManager
@@ -65,6 +66,10 @@ class RuntimePaths:
     @property
     def portfolio_exposure(self):
         return self.root / "portfolio_exposure.json"
+
+    @property
+    def position_allocations(self):
+        return self.root / "position_allocations.json"
 
 
 def build_paper_runtime(
@@ -122,6 +127,10 @@ def build_paper_runtime(
         Decimal(str(max_total_allocated)),
     )
     capital_transition = CapitalTransition(capital, exposure)
+    position_allocations = PositionAllocationBook(
+        exposure,
+        paths.position_allocations,
+    )
     execution = ExecutionEngine(
         risk_engine=risk,
         kill_switch=kill_switch,
@@ -155,6 +164,7 @@ def build_paper_runtime(
         fill_accounting,
         capital_lifecycle=CapitalLifecycle(capital),
         capital_transition=capital_transition,
+        position_allocation_book=position_allocations,
     )
 
     return PaperTradingRuntime(
