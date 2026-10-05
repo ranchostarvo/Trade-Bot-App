@@ -54,7 +54,17 @@ def test_filled_sell_releases_exposure(tmp_path):
     assert store.load_exposure_reservations("SPY") == {"bot-1": "400"}
 
 
-def test_filled_buy_adds_exposure(tmp_path):
+def test_filled_buy_converts_pending_to_filled(tmp_path):
     store, resources, settlement = setup(tmp_path)
+    resources.reserve_pending_exposure(
+        "buy-1", "bot-1", "SPY", Decimal("100")
+    )
     settlement.settle_buy(filled("buy-1"), "bot-1", request("buy"))
+    assert store.load_pending_exposure() == {}
     assert store.load_exposure_reservations("SPY") == {"bot-1": "100"}
+
+
+def test_filled_buy_without_pending_reservation_fails_closed(tmp_path):
+    _, _, settlement = setup(tmp_path)
+    with pytest.raises(RuntimeError, match="No pending BUY exposure"):
+        settlement.settle_buy(filled("buy-1"), "bot-1", request("buy"))
