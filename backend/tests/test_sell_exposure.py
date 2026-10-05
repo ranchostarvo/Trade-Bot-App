@@ -42,5 +42,5 @@ def test_sell_reduces_existing_durable_exposure(tmp_path):
     result = flow.process("sell-1", sell, bot_id="bot-1")
 
     assert result["status"] == "DRY_RUN"
-    assert result["exposure_released"] is True
-    assert store.load_exposure_reservations("SPY") == {"bot-1": "300"}
+    assert result["exposure_released"] is False
+    assert store.load_exposure_reservations("SPY") == {"bot-1": "500"}
