@@ -1,0 +1,48 @@
+name: Backend Safety Tests
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        run: pip install -r requirements.txt
+      - name: Run deterministic offline safety tests
+        env:
+          PYTHONPATH: .
+        run: |
+          python test_risk_engine.py
+          python test_daily_loss.py
+          python test_kill_switch.py
+          python test_execution_pipeline.py
+          python test_risk_store.py
+          python test_persistent_kill_switch.py
+          python test_equity_baseline.py
+          python test_persistent_daily_loss.py
+          python test_paper_order_interface.py
+          python test_execution_broker_gate.py
+          python test_enabled_paper_execution.py
+          python test_order_tracker.py
+          python test_order_journal.py
+          python test_position_reconciler.py
+          python test_restart_recovery.py
+          python test_submission_ledger.py
+          python test_execution_idempotency.py
+          python test_submission_recovery.py
+          python test_paper_runtime.py
+          python test_runtime_factory.py
