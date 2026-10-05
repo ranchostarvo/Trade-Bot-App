@@ -608,3 +608,66 @@ class SQLiteStore:
                 (order_id,),
             ).fetchone()
         return row["outcome"] if row is not None else None
+
+
+    def settle_filled_sell_atomically(
+        self, order_id: str, bot_id: str, symbol: str, notional
+    ) -> bool:
+        from decimal import Decimal
+
+        order_id = order_id.strip()
+        bot_id = bot_id.strip()
+        symbol = symbol.strip().upper()
+        release = Decimal(str(notional))
+        if not order_id or not bot_id or not symbol or release <= 0:
+            raise ValueError("Valid order, bot, symbol, and notional are required.")
+
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            existing = connection.execute(
+                "SELECT outcome FROM order_settlements WHERE order_id = ?",
+                (order_id,),
+            ).fetchone()
+            if existing is not None:
+                return False
+
+            row = connection.execute(
+                """
+                SELECT notional FROM exposure_reservations
+                WHERE bot_id = ? AND symbol = ?
+                """,
+                (bot_id, symbol),
+            ).fetchone()
+            if row is None:
+                raise ValueError("No exposure reservation exists for SELL settlement.")
+
+            held = Decimal(row["notional"])
+            if release > held:
+                raise ValueError("SELL settlement exceeds reserved exposure.")
+
+            remaining = held - release
+            if remaining == 0:
+                connection.execute(
+                    """
+                    DELETE FROM exposure_reservations
+                    WHERE bot_id = ? AND symbol = ?
+                    """,
+                    (bot_id, symbol),
+                )
+            else:
+                connection.execute(
+                    """
+                    UPDATE exposure_reservations SET notional = ?
+                    WHERE bot_id = ? AND symbol = ?
+                    """,
+                    (str(remaining), bot_id, symbol),
+                )
+
+            connection.execute(
+                """
+                INSERT INTO order_settlements(order_id, outcome)
+                VALUES (?, 'FILLED_SELL')
+                """,
+                (order_id,),
+            )
+        return True
