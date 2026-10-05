@@ -65,10 +65,10 @@ class FleetOrchestrator:
         bot = self.registry.get(bot_id)
         if bot.state is not BotState.STOPPED:
             bot.stop()
-        try:
+        if self.resource_coordinator is not None:
+            self.resource_coordinator.release_bot_capital(bot_id)
+        else:
             self.allocator.release(bot_id)
-        except Exception:
-            pass
         return bot.state
 
     def emergency_stop(self, reason: str):
