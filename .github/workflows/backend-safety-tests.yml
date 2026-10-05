@@ -84,3 +84,5 @@ jobs:
           python test_bot_orchestrator_preflight.py
           python test_readiness.py
           python test_readiness_summary.py
+          python test_sell_transition_recovery.py
+          python test_release_gate.py
