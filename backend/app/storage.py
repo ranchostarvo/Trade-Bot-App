@@ -95,6 +95,14 @@ class SQLiteStore:
             )
             connection.execute(
                 """
+                CREATE TABLE IF NOT EXISTS order_settlements (
+                    order_id TEXT PRIMARY KEY,
+                    outcome TEXT NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
                 CREATE TABLE IF NOT EXISTS pending_exposure (
                     order_id TEXT PRIMARY KEY,
                     bot_id TEXT NOT NULL,
@@ -573,3 +581,30 @@ class SQLiteStore:
                 (order_id,),
             ).fetchone()
         return dict(row) if row is not None else None
+
+
+    def claim_order_settlement(self, order_id: str, outcome: str) -> bool:
+        order_id = order_id.strip()
+        outcome = outcome.strip().upper()
+        if not order_id or not outcome:
+            raise ValueError("order_id and outcome are required.")
+        try:
+            with self._connect() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO order_settlements(order_id, outcome)
+                    VALUES (?, ?)
+                    """,
+                    (order_id, outcome),
+                )
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def load_order_settlement(self, order_id: str):
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT outcome FROM order_settlements WHERE order_id = ?",
+                (order_id,),
+            ).fetchone()
+        return row["outcome"] if row is not None else None
