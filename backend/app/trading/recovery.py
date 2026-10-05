@@ -48,16 +48,35 @@ class RecoveryManager:
                 updated += 1
 
             if fill_delta and self.fill_accounting is not None:
-                delta_state = type(current)(
-                    order_id=current.order_id,
-                    symbol=current.symbol,
-                    side=current.side,
-                    status=current.status,
-                    filled_qty=fill_delta,
-                    filled_avg_price=current.filled_avg_price,
-                    terminal=current.terminal,
+                snapshot_store = getattr(
+                    self.fill_accounting, "snapshot_store", None
                 )
-                self.fill_accounting.apply(delta_state)
+                atomic_apply = getattr(
+                    snapshot_store, "apply_fill_once", None
+                )
+                if atomic_apply is not None:
+                    _, applied_delta = atomic_apply(
+                        order_id,
+                        current.symbol,
+                        current.side,
+                        current.filled_qty,
+                    )
+                    if applied_delta != fill_delta:
+                        raise RuntimeError(
+                            f"Atomic fill delta mismatch for order {order_id}."
+                        )
+                else:
+                    delta_state = type(current)(
+                        order_id=current.order_id,
+                        symbol=current.symbol,
+                        side=current.side,
+                        status=current.status,
+                        filled_qty=fill_delta,
+                        filled_avg_price=current.filled_avg_price,
+                        terminal=current.terminal,
+                    )
+                    self.fill_accounting.apply(delta_state)
+
                 if self.fill_checkpoint_store is not None:
                     self.fill_checkpoint_store.set(
                         order_id,
