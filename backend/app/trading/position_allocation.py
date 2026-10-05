@@ -1,5 +1,8 @@
+import json
+import os
 from dataclasses import dataclass
 from decimal import Decimal
+from pathlib import Path
 
 from .risk import RiskRejected
 
@@ -15,9 +18,46 @@ class PositionAllocation:
 class PositionAllocationBook:
     """Maps sell quantity deterministically to persistent invested allocations."""
 
-    def __init__(self, exposure_ledger):
+    def __init__(self, exposure_ledger, path=None):
         self.exposure = exposure_ledger
-        self._positions = {}
+        self.path = Path(path) if path is not None else None
+        self._positions = self._read()
+
+    def _read(self):
+        if self.path is None or not self.path.exists():
+            return {}
+        try:
+            raw = json.loads(self.path.read_text())
+            if not isinstance(raw, dict):
+                raise ValueError("position allocation root must be an object")
+            result = {}
+            for key, value in raw.items():
+                result[key] = PositionAllocation(
+                    key,
+                    str(value["symbol"]).upper(),
+                    Decimal(str(value["quantity"])),
+                    Decimal(str(value["invested_notional"])),
+                )
+                if result[key].quantity <= 0 or result[key].invested_notional <= 0:
+                    raise ValueError("position allocations must be positive")
+            return result
+        except Exception as exc:
+            raise RiskRejected(f"Unable to read position allocations: {exc}") from exc
+
+    def _write(self):
+        if self.path is None:
+            return
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.path.with_suffix(self.path.suffix + ".tmp")
+        temporary.write_text(json.dumps({
+            key: {
+                "symbol": value.symbol,
+                "quantity": str(value.quantity),
+                "invested_notional": str(value.invested_notional),
+            }
+            for key, value in self._positions.items()
+        }, sort_keys=True, indent=2))
+        os.replace(temporary, self.path)
 
     def record_buy(self, allocation_id, symbol, quantity, invested_notional):
         key = str(allocation_id or "").strip()
@@ -30,6 +70,7 @@ class PositionAllocationBook:
             raise RiskRejected("Duplicate position allocation.")
         self.exposure.allocate(key, notional)
         self._positions[key] = PositionAllocation(key, symbol, quantity, notional)
+        self._write()
         return self._positions[key]
 
     def release_sell(self, symbol, quantity):
@@ -62,4 +103,5 @@ class PositionAllocationBook:
                 self._positions[position.allocation_id] = PositionAllocation(
                     position.allocation_id, position.symbol, left_qty, left_notional
                 )
+            self._write()
         return released
