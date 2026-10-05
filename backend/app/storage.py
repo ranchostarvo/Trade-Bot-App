@@ -79,6 +79,16 @@ class SQLiteStore:
                 )
                 """
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS pending_exposure (
+                    order_id TEXT PRIMARY KEY,
+                    bot_id TEXT NOT NULL,
+                    symbol TEXT NOT NULL,
+                    notional TEXT NOT NULL
+                )
+                """
+            )
 
     def append_audit(self, event: AuditEvent) -> None:
         with self._connect() as connection:
@@ -347,3 +357,45 @@ class SQLiteStore:
                     (str(remaining), bot_id, symbol),
                 )
         return True
+
+
+    def reserve_pending_exposure(self, order_id, bot_id, symbol, notional) -> bool:
+        order_id = order_id.strip()
+        bot_id = bot_id.strip()
+        symbol = symbol.strip().upper()
+        if not order_id or not bot_id or not symbol:
+            raise ValueError("order_id, bot_id and symbol are required.")
+        try:
+            with self._connect() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO pending_exposure(order_id, bot_id, symbol, notional)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (order_id, bot_id, symbol, str(notional)),
+                )
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def release_pending_exposure(self, order_id: str) -> bool:
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "DELETE FROM pending_exposure WHERE order_id = ?",
+                (order_id.strip(),),
+            )
+        return cursor.rowcount == 1
+
+    def load_pending_exposure(self) -> dict[str, dict[str, str]]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT order_id, bot_id, symbol, notional FROM pending_exposure"
+            ).fetchall()
+        return {
+            row["order_id"]: {
+                "bot_id": row["bot_id"],
+                "symbol": row["symbol"],
+                "notional": row["notional"],
+            }
+            for row in rows
+        }
