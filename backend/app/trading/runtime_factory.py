@@ -131,6 +131,7 @@ def build_paper_runtime(
         session_guard=session_guard,
         capital_coordinator=capital,
         available_cash_provider=account.get_available_cash,
+        invested_capital_provider=lambda: exposure.total_invested,
     )
     journal = OrderJournal(paths.order_journal)
     tracker = OrderTracker(broker)
