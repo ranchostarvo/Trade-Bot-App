@@ -54,3 +54,32 @@ with tempfile.TemporaryDirectory() as directory:
 
 print("Real Alpaca order submitted: NO")
 print("RESULT: PASS")
+
+
+class UnconfiguredBroker:
+    pass
+
+
+class LiveConfig:
+    paper = False
+
+
+class LiveBroker:
+    config = LiveConfig()
+
+
+with tempfile.TemporaryDirectory() as directory:
+    try:
+        build_paper_runtime(directory, broker=UnconfiguredBroker())
+        raise AssertionError("Unconfigured broker must be rejected.")
+    except RuntimeError:
+        pass
+
+    try:
+        build_paper_runtime(directory, broker=LiveBroker())
+        raise AssertionError("Non-paper broker must be rejected.")
+    except RuntimeError:
+        pass
+
+print("Unconfigured broker rejected: PASS")
+print("Non-paper broker rejected: PASS")
