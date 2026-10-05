@@ -10,6 +10,10 @@ class KillSwitch:
         self.engaged = True
         self.reason = reason
 
-    def reset(self) -> None:
+    def reset(self, confirmation: str) -> None:
+        if not self.engaged:
+            raise RuntimeError("Kill switch is not engaged.")
+        if confirmation != "CLEAR-KILL-SWITCH":
+            raise RuntimeError("Explicit kill-switch confirmation is required.")
         self.engaged = False
         self.reason = None
