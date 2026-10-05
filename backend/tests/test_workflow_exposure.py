@@ -6,7 +6,7 @@ from app.storage import SQLiteStore
 from app.trading.execution import ExecutionEngine
 from app.trading.idempotency import PersistentIdempotencyRegistry
 from app.trading.resources import DurableResourceCoordinator
-from app.trading.risk import OrderRequest
+from app.trading.risk import OrderRequest, RiskConfig, RiskEngine
 from app.trading.workflow import DurableExecutionWorkflow
 
 
@@ -39,8 +39,9 @@ def test_buy_workflow_reserves_durable_exposure(tmp_path):
 
 def test_failed_execution_releases_exposure(tmp_path):
     store, resources, flow = setup(tmp_path)
-    flow.execution.risk.config.dry_run = False
-    flow.execution.risk.config.trading_enabled = True
+    flow.execution.risk = RiskEngine(
+        RiskConfig(dry_run=False, trading_enabled=True)
+    )
 
     with pytest.raises(RuntimeError, match="intentionally not implemented"):
         flow.process("order-1", buy(), bot_id="bot-1")
