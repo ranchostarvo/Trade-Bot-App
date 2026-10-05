@@ -55,7 +55,7 @@ class BuyTransitionRecovery:
             if status == "allocation_applied":
                 # Reservation mutation occurred with exposure allocation. We only
                 # advance the fill checkpoint after both persistent ledgers agree.
-                checkpoint = self.checkpoints.get(order_id)
+                checkpoint = self.checkpoints.recovery_state(order_id)
                 if checkpoint is None:
                     raise RiskRejected(
                         "Interrupted buy transition lacks cumulative checkpoint target; "
