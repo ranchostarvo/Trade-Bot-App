@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from app.api.auth import require_control_token
 from app.audit import AuditLog
-from app.trading.orchestrator import BotSpec, FleetOrchestrator
+from app.trading.orchestrator import BotSpec, FleetOrchestrator\nfrom app.trading.runtime import TradingRuntime\nfrom app.api.control_plane import ControlPlane
 
 app = FastAPI(title="Trade Bot Control API", version="0.1.0")
 
@@ -30,7 +30,7 @@ class ReauthorizeRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "broker_execution": False}
+    return {\n        "status": "ok",\n        "broker_execution": False,\n        "trading_ready": control_plane.trading_ready,\n        "kill_switch": fleet.kill_switch.engaged,\n    }
 
 
 @app.get("/fleet/status", dependencies=[Depends(require_control_token)])
