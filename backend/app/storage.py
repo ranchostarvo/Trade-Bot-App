@@ -452,3 +452,47 @@ class SQLiteStore:
             except sqlite3.IntegrityError:
                 return False
         return True
+
+
+    def settle_pending_buy_atomically(self, order_id: str) -> bool:
+        from decimal import Decimal
+
+        order_id = order_id.strip()
+        if not order_id:
+            raise ValueError("order_id is required.")
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                """
+                SELECT bot_id, symbol, notional
+                FROM pending_exposure
+                WHERE order_id = ?
+                """,
+                (order_id,),
+            ).fetchone()
+            if row is None:
+                return False
+
+            existing = connection.execute(
+                """
+                SELECT notional FROM exposure_reservations
+                WHERE bot_id = ? AND symbol = ?
+                """,
+                (row["bot_id"], row["symbol"]),
+            ).fetchone()
+            filled = Decimal(existing["notional"]) if existing else Decimal("0")
+            new_total = filled + Decimal(row["notional"])
+            connection.execute(
+                """
+                INSERT INTO exposure_reservations(bot_id, symbol, notional)
+                VALUES (?, ?, ?)
+                ON CONFLICT(bot_id, symbol)
+                DO UPDATE SET notional = excluded.notional
+                """,
+                (row["bot_id"], row["symbol"], str(new_total)),
+            )
+            connection.execute(
+                "DELETE FROM pending_exposure WHERE order_id = ?",
+                (order_id,),
+            )
+        return True
