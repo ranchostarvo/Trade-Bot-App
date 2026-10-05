@@ -20,6 +20,8 @@ class OperatorAPI:
             return 200, self.service.bots()
         if method == "GET" and path == "/readiness":
             return 200, self.service.release_readiness()
+        if method == "POST" and path == "/analyze":
+            return 200, self.service.analyze_asset(body.get("symbol"), body.get("asset_class"), body.get("price"), body.get("max_order_notional"))
         if method == "POST" and path == "/pause":
             count = self.service.bot_manager.pause_all(str(body.get("reason") or "operator pause"))
             return 200, {"paused": True, "enabled_bots": count}
