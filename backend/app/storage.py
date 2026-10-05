@@ -496,3 +496,24 @@ class SQLiteStore:
                 (order_id,),
             )
         return True
+
+
+    def load_unresolved_orders(self):
+        placeholders = ", ".join("?" for _ in ("SUBMITTED", "ACKNOWLEDGED"))
+        with self._connect() as connection:
+            rows = connection.execute(
+                f"""
+                SELECT order_id, state, rejection_reason
+                FROM managed_orders
+                WHERE state IN ({placeholders})
+                ORDER BY order_id
+                """,
+                ("SUBMITTED", "ACKNOWLEDGED"),
+            ).fetchall()
+        orders = []
+        for row in rows:
+            order = ManagedOrder(row["order_id"])
+            order.state = OrderState(row["state"])
+            order.rejection_reason = row["rejection_reason"]
+            orders.append(order)
+        return orders
