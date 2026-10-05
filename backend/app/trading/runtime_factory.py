@@ -30,6 +30,7 @@ from .risk_store import RiskStateStore
 from .runtime import PaperTradingRuntime
 from .submission_ledger import SubmissionLedger
 from .sell_fill_checkpoint import SellFillCheckpointStore
+from .sell_transition_journal import SellTransitionJournal
 
 
 @dataclass(frozen=True)
@@ -75,6 +76,10 @@ class RuntimePaths:
     @property
     def sell_fill_checkpoints(self):
         return self.root / "sell_fill_checkpoints.json"
+
+    @property
+    def sell_transition_journal(self):
+        return self.root / "sell_transition_journal.json"
 
 
 def build_paper_runtime(
@@ -171,6 +176,7 @@ def build_paper_runtime(
         capital_transition=capital_transition,
         position_allocation_book=position_allocations,
         sell_fill_checkpoints=SellFillCheckpointStore(paths.sell_fill_checkpoints),
+        sell_transition_journal=SellTransitionJournal(paths.sell_transition_journal),
     )
 
     return PaperTradingRuntime(
