@@ -83,6 +83,7 @@ jobs:
           python test_combined_capital_ceiling.py
           python test_risk_profiles.py
           python test_virtual_broker.py
+          python test_virtual_broker_fault_matrix.py
           python test_bot_orchestrator_preflight.py
           python test_bot_risk_profile_preflight.py
           python test_100_bot_mixed_profile_preflight.py
