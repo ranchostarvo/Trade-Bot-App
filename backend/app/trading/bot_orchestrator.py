@@ -14,9 +14,10 @@ class BotOrder:
 class BotOrchestrator:
     """Deterministic bounded fan-out for many independently configured bots."""
 
-    def __init__(self, runtime, max_bots=100):
+    def __init__(self, runtime, max_bots=100, stop_on_rejection=True):
         self.runtime = runtime
         self.max_bots = int(max_bots)
+        self.stop_on_rejection = bool(stop_on_rejection)
         if self.max_bots < 1 or self.max_bots > 100:
             raise ValueError("max_bots must be between 1 and 100.")
 
@@ -42,11 +43,22 @@ class BotOrchestrator:
 
             # Sequential fan-out is intentional for v1: shared portfolio capital
             # reservations are observed before the next bot is allowed to execute.
-            results.append({
-                "bot_id": bot_id,
-                "result": self.runtime.execute(
+            try:
+                result = self.runtime.execute(
                     request.order,
                     client_order_id=client_order_id,
-                ),
-            })
+                )
+                results.append({
+                    "bot_id": bot_id,
+                    "ok": True,
+                    "result": result,
+                })
+            except RiskRejected as exc:
+                results.append({
+                    "bot_id": bot_id,
+                    "ok": False,
+                    "error": str(exc),
+                })
+                if self.stop_on_rejection:
+                    break
         return results
