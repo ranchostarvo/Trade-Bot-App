@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from decimal import Decimal
+from threading import RLock
 
 
 class AllocationRejected(RuntimeError):
@@ -19,6 +20,7 @@ class CapitalAllocator:
             raise ValueError("Account cash cannot be negative.")
         self._account_cash = account_cash
         self._reservations: dict[str, Decimal] = {}
+        self._lock = RLock()
 
     @property
     def reserved_cash(self) -> Decimal:
@@ -36,6 +38,10 @@ class CapitalAllocator:
         )
 
     def reserve(self, bot_id: str, amount: Decimal) -> AllocationSnapshot:
+        with self._lock:
+            return self._reserve_locked(bot_id, amount)
+
+    def _reserve_locked(self, bot_id: str, amount: Decimal) -> AllocationSnapshot:
         bot_id = bot_id.strip()
         if not bot_id:
             raise AllocationRejected("bot_id is required.")
