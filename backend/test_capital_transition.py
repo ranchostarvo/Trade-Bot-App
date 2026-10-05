@@ -40,7 +40,7 @@ with tempfile.TemporaryDirectory() as root:
         root / "reservations.json",
     )
     exposure2 = PortfolioExposureLedger(root / "exposure.json", Decimal("50000"))
-    assert reservations2.total_allocated == Decimal("0")
+    assert reservations2.allocated == Decimal("0")
     assert exposure2.total_invested == Decimal("375")
 
     try:
