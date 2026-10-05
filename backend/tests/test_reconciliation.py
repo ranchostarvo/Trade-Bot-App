@@ -11,9 +11,7 @@ class FakeClient:
             "account_blocked": False,
         }
 
-    def _request(self, method, path):
-        assert method == "GET"
-        assert path == "/v2/positions"
+    def get_positions(self):
         return [
             {"symbol": "SPY", "qty": "3.5"},
             {"symbol": "QQQ", "qty": "2"},
