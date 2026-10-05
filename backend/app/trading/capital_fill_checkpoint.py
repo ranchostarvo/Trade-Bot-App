@@ -23,6 +23,18 @@ class CapitalFillCheckpointStore:
         except Exception as exc:
             raise RiskRejected('Unable to read capital fill checkpoint.') from exc
 
+    def recovery_state(self, order_id):
+        key = str(order_id or '').strip()
+        if not key:
+            raise RiskRejected('Capital fill checkpoint ID is required.')
+        item = self._read().get(key)
+        if item is None:
+            return None
+        return (
+            Decimal(str(item['quantity'])),
+            Decimal(str(item['value'])),
+        )
+
     def delta(self, order_id, quantity, value):
         key = str(order_id or '').strip()
         quantity = Decimal(str(quantity))
