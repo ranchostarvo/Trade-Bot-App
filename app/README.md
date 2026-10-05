@@ -7,3 +7,7 @@ Features: runtime/readiness status, configured/enabled bot summary, bot enable/d
 Deliberate exclusions: no direct order entry, live-broker selector, kill-switch bypass, API-key field, or live-money control.
 
 Build with `--dart-define=OPERATOR_API_URL=<operator-api-base-url>`. The console consumes only the frozen Paper v1 operator contract.
+
+
+## Verification
+CI validates Dart formatting, static analysis, widget tests, and the backend safety suite on every pull-request update.
