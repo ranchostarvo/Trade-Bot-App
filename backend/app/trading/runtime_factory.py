@@ -7,6 +7,7 @@ from app.brokers.alpaca import AlpacaClient
 from .account_state import AlpacaAccountStateProvider
 from .equity_baseline import EquityBaselineStore
 from .execution import ExecutionEngine
+from .fill_accounting import FillAccounting
 from .exchange_calendar import AlpacaExchangeCalendar
 from .market_session import USMarketSessionClock
 from .session_guard import MarketSessionGuard
@@ -99,8 +100,13 @@ def build_paper_runtime(
     )
     journal = OrderJournal(paths.order_journal)
     tracker = OrderTracker(broker)
-    recovery = RecoveryManager(tracker, journal)
     position_store = PositionSnapshotStore(paths.position_snapshot)
+    fill_accounting = FillAccounting(position_store)
+    recovery = RecoveryManager(
+        tracker,
+        journal,
+        fill_accounting=fill_accounting,
+    )
     position_recovery = PositionRecoveryManager(
         PositionReconciler(broker),
         position_store,
