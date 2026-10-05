@@ -55,6 +55,9 @@ class RecoveryManager:
                     snapshot_store, "apply_fill_once", None
                 )
                 if atomic_apply is not None:
+                    seed = getattr(snapshot_store, "seed_accounted_fill", None)
+                    if seed is not None:
+                        seed(order_id, accounted_filled)
                     _, applied_delta = atomic_apply(
                         order_id,
                         current.symbol,
