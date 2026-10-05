@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from decimal import Decimal
+from threading import RLock
 
 
 class ExposureRejected(RuntimeError):
@@ -21,11 +22,18 @@ class PortfolioCoordinator:
         self.account_equity = account_equity
         self.config = config or ExposureConfig()
         self._exposure: dict[str, dict[str, Decimal]] = {}
+        self._lock = RLock()
 
     def _symbol_total(self, symbol: str) -> Decimal:
         return sum(self._exposure.get(symbol, {}).values(), Decimal("0"))
 
     def reserve_exposure(
+        self, bot_id: str, symbol: str, notional: Decimal
+    ) -> Decimal:
+        with self._lock:
+            return self._reserve_exposure_locked(bot_id, symbol, notional)
+
+    def _reserve_exposure_locked(
         self, bot_id: str, symbol: str, notional: Decimal
     ) -> Decimal:
         bot_id = bot_id.strip()
