@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from .position_reconciler import PositionMismatch
 
 
@@ -15,15 +13,12 @@ class FillAccounting:
         if not state.symbol:
             raise PositionMismatch("Fill symbol is required.")
 
-        current = self.snapshot_store.get(state.symbol)
-        current = current if current is not None else Decimal("0")
-        delta = state.filled_qty if state.side == "buy" else -state.filled_qty
-        expected = current + delta
-
-        if expected < 0:
-            raise PositionMismatch(
-                f"Fill would create negative expected position for {state.symbol}."
-            )
-
-        self.snapshot_store.set(state.symbol, expected)
+        # Atomic position + cumulative-fill checkpoint. Re-observing the same
+        # cumulative broker fill is idempotent and produces a zero delta.
+        expected, _delta = self.snapshot_store.apply_fill_once(
+            state.order_id,
+            state.symbol,
+            state.side,
+            state.filled_qty,
+        )
         return expected
