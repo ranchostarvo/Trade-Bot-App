@@ -59,6 +59,16 @@ class PositionAllocationBook:
         }, sort_keys=True, indent=2))
         os.replace(temporary, self.path)
 
+    def get(self, allocation_id):
+        return self._positions.get(str(allocation_id))
+
+    def total_quantity(self, symbol):
+        symbol = str(symbol or "").strip().upper()
+        return sum(
+            (p.quantity for p in self._positions.values() if p.symbol == symbol),
+            Decimal("0"),
+        )
+
     def record_buy(self, allocation_id, symbol, quantity, invested_notional):
         key = str(allocation_id or "").strip()
         symbol = str(symbol or "").strip().upper()
