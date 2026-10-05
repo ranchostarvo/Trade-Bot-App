@@ -13,6 +13,9 @@ from .session_guard import MarketSessionGuard
 from .kill_switch import KillSwitch
 from .order_journal import OrderJournal
 from .order_tracker import OrderTracker
+from .position_reconciler import PositionReconciler
+from .position_recovery import PositionRecoveryManager
+from .position_snapshot import PositionSnapshotStore
 from .recovery import RecoveryManager
 from .risk import RiskConfig, RiskEngine
 from .risk_store import RiskStateStore
@@ -39,6 +42,10 @@ class RuntimePaths:
     @property
     def submission_ledger(self):
         return self.root / "submission_ledger.json"
+
+    @property
+    def position_snapshot(self):
+        return self.root / "position_snapshot.json"
 
 
 def build_paper_runtime(
@@ -93,9 +100,15 @@ def build_paper_runtime(
     journal = OrderJournal(paths.order_journal)
     tracker = OrderTracker(broker)
     recovery = RecoveryManager(tracker, journal)
+    position_store = PositionSnapshotStore(paths.position_snapshot)
+    position_recovery = PositionRecoveryManager(
+        PositionReconciler(broker),
+        position_store,
+    )
 
     return PaperTradingRuntime(
         execution_engine=execution,
         recovery_manager=recovery,
         kill_switch=kill_switch,
+        position_recovery_manager=position_recovery,
     )
