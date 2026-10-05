@@ -3,11 +3,19 @@ from .risk import RiskRejected
 
 
 class OrderLifecycleService:
-    def __init__(self, execution_engine, order_journal, order_tracker, fill_accounting):
+    def __init__(
+        self,
+        execution_engine,
+        order_journal,
+        order_tracker,
+        fill_accounting,
+        capital_lifecycle=None,
+    ):
         self.execution_engine = execution_engine
         self.order_journal = order_journal
         self.order_tracker = order_tracker
         self.fill_accounting = fill_accounting
+        self.capital_lifecycle = capital_lifecycle
 
     def submit(self, order, client_order_id):
         result = self.execution_engine.execute(
@@ -26,6 +34,9 @@ class OrderLifecycleService:
 
         if state.filled_qty:
             self.fill_accounting.apply(state)
+
+        if self.capital_lifecycle is not None:
+            self.capital_lifecycle.reconcile(client_order_id, state)
 
         return {
             **result,
