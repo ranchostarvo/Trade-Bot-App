@@ -56,7 +56,7 @@ class PortfolioCapitalCoordinator:
     def allocated(self):
         return sum(self._reservations.values(), Decimal("0"))
 
-    def reserve(self, reservation_id, notional, available_cash):
+    def reserve(self, reservation_id, notional, available_cash, invested_capital=Decimal("0")):
         reservation_id = str(reservation_id or "").strip()
         if not reservation_id:
             raise RiskRejected("Capital reservation ID is required.")
@@ -70,8 +70,12 @@ class PortfolioCapitalCoordinator:
         if reservation_id in self._reservations:
             raise RiskRejected("Duplicate capital reservation.")
 
+        invested = Decimal(str(invested_capital))
+        if invested < 0:
+            raise RiskRejected("Invested capital cannot be negative.")
+
         after = self.allocated + amount
-        if after > self.config.max_total_allocated:
+        if invested + after > self.config.max_total_allocated:
             raise RiskRejected("Portfolio allocation ceiling exceeded.")
         if after > cash - self.config.reserve_cash:
             raise RiskRejected("Insufficient unreserved portfolio cash.")
