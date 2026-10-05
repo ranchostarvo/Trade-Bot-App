@@ -18,6 +18,7 @@ class ExecutionEngine:
         order: OrderRequest,
         account_state=None,
         idempotency_key=None,
+        idempotency_reserved=False,
     ):
         approval = self.risk.validate(order, account_state=account_state)
 
@@ -39,7 +40,13 @@ class ExecutionEngine:
                 raise RuntimeError(
                     "Idempotency key is required for protected execution."
                 )
-            self.idempotency_registry.reserve(idempotency_key)
+            if idempotency_reserved:
+                if not self.idempotency_registry.contains(idempotency_key):
+                    raise RuntimeError(
+                        "Claimed idempotency reservation does not exist."
+                    )
+            else:
+                self.idempotency_registry.reserve(idempotency_key)
 
         # Fail closed: broker submission is impossible until both controls
         # are explicitly changed in a later, separately tested milestone.
