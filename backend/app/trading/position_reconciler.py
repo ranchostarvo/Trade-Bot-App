@@ -50,3 +50,15 @@ class PositionReconciler:
             )
 
         return position
+
+    def reconcile_expected(self, symbol: str, expected_qty: Decimal):
+        position = self.get_position(symbol)
+        expected_qty = Decimal(str(expected_qty))
+
+        if position.quantity != expected_qty:
+            raise PositionMismatch(
+                f"{position.symbol} broker quantity {position.quantity} "
+                f"does not match expected quantity {expected_qty}."
+            )
+
+        return position
