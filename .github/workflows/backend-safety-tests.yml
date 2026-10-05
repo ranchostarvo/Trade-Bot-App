@@ -51,3 +51,4 @@ jobs:
           python test_session_guard.py
           python test_diagnostics.py
           python test_position_snapshot.py
+          python test_position_recovery.py
