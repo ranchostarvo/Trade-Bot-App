@@ -399,3 +399,56 @@ class SQLiteStore:
             }
             for row in rows
         }
+
+
+    def reserve_pending_exposure_with_limits(
+        self, order_id, bot_id, symbol, notional, account_equity,
+        max_symbol_notional, max_symbol_pct
+    ) -> bool:
+        from decimal import Decimal
+
+        order_id = order_id.strip()
+        bot_id = bot_id.strip()
+        symbol = symbol.strip().upper()
+        proposed_add = Decimal(str(notional))
+        equity = Decimal(str(account_equity))
+        max_notional = Decimal(str(max_symbol_notional))
+        max_pct = Decimal(str(max_symbol_pct))
+        if (
+            not order_id or not bot_id or not symbol
+            or proposed_add <= 0 or equity <= 0
+        ):
+            raise ValueError("Invalid pending exposure reservation.")
+
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            filled_rows = connection.execute(
+                "SELECT notional FROM exposure_reservations WHERE symbol = ?",
+                (symbol,),
+            ).fetchall()
+            pending_rows = connection.execute(
+                "SELECT notional FROM pending_exposure WHERE symbol = ?",
+                (symbol,),
+            ).fetchall()
+            committed = sum(
+                (Decimal(row["notional"]) for row in filled_rows),
+                Decimal("0"),
+            ) + sum(
+                (Decimal(row["notional"]) for row in pending_rows),
+                Decimal("0"),
+            )
+            proposed = committed + proposed_add
+            pct = (proposed / equity) * Decimal("100")
+            if proposed > max_notional or pct > max_pct:
+                return False
+            try:
+                connection.execute(
+                    """
+                    INSERT INTO pending_exposure(order_id, bot_id, symbol, notional)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (order_id, bot_id, symbol, str(proposed_add)),
+                )
+            except sqlite3.IntegrityError:
+                return False
+        return True
