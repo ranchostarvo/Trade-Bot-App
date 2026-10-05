@@ -92,6 +92,7 @@ jobs:
           python test_readiness_summary.py
           python test_release_gate.py
           python test_release_evidence_matrix.py
+          python test_paper_v1_rc_evidence.py
           python test_bot_manager.py
           python test_operator_service.py
           python test_operator_api.py
