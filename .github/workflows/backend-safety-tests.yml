@@ -48,3 +48,4 @@ jobs:
           python test_notional_execution.py
           python test_market_session.py
           python test_exchange_calendar.py
+          python test_session_guard.py
