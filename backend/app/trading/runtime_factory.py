@@ -31,6 +31,7 @@ from .runtime import PaperTradingRuntime
 from .submission_ledger import SubmissionLedger
 from .sell_fill_checkpoint import SellFillCheckpointStore
 from .sell_transition_journal import SellTransitionJournal
+from .sell_transition_recovery import SellTransitionRecovery
 
 
 @dataclass(frozen=True)
@@ -167,6 +168,11 @@ def build_paper_runtime(
         PositionReconciler(broker),
         position_store,
     )
+    sell_checkpoints = SellFillCheckpointStore(paths.sell_fill_checkpoints)
+    sell_journal = SellTransitionJournal(paths.sell_transition_journal)
+    sell_recovery = SellTransitionRecovery(
+        sell_journal, sell_checkpoints, position_allocations
+    )
     lifecycle = OrderLifecycleService(
         execution,
         journal,
@@ -175,8 +181,8 @@ def build_paper_runtime(
         capital_lifecycle=CapitalLifecycle(capital),
         capital_transition=capital_transition,
         position_allocation_book=position_allocations,
-        sell_fill_checkpoints=SellFillCheckpointStore(paths.sell_fill_checkpoints),
-        sell_transition_journal=SellTransitionJournal(paths.sell_transition_journal),
+        sell_fill_checkpoints=sell_checkpoints,
+        sell_transition_journal=sell_journal,
     )
 
     return PaperTradingRuntime(
@@ -185,4 +191,5 @@ def build_paper_runtime(
         kill_switch=kill_switch,
         position_recovery_manager=position_recovery,
         lifecycle_service=lifecycle,
+        sell_transition_recovery=sell_recovery,
     )
