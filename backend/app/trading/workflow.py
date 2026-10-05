@@ -51,11 +51,23 @@ class DurableExecutionWorkflow:
 
             managed.transition(OrderState.RESERVED)
             self.store.save_managed_order(managed)
+
+            exposure_released = False
+            if (
+                self.resources is not None
+                and request.side.lower() == "sell"
+            ):
+                self.resources.release_symbol_exposure(
+                    bot_id, request.symbol, request.notional
+                )
+                exposure_released = True
+
             return {
                 **result,
                 "order_id": order_id,
                 "order_state": managed.state.value,
                 "idempotency_key": order_id,
+                "exposure_released": exposure_released,
             }
         except Exception as exc:
             if (
