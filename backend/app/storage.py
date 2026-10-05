@@ -290,3 +290,16 @@ class SQLiteStore:
                 (symbol,),
             ).fetchall()
         return {row["bot_id"]: row["notional"] for row in rows}
+
+
+    def release_capital_atomically(self, bot_id: str) -> bool:
+        bot_id = bot_id.strip()
+        if not bot_id:
+            raise ValueError("bot_id is required.")
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            cursor = connection.execute(
+                "DELETE FROM capital_reservations WHERE bot_id = ?",
+                (bot_id,),
+            )
+        return cursor.rowcount == 1
