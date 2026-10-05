@@ -22,5 +22,22 @@ class RuntimeDiagnostics:
                 "equity_baseline": str(self.paths.equity_baseline),
                 "order_journal": str(self.paths.order_journal),
                 "submission_ledger": str(self.paths.submission_ledger),
+                "position_snapshot": str(self.paths.position_snapshot),
+                "fill_checkpoint": str(self.paths.fill_checkpoint),
             }
+        recovery = self.runtime.recovery_manager
+        data["recovery"] = {
+            "fill_checkpoint_enabled": (
+                getattr(recovery, "fill_checkpoint_store", None) is not None
+            ),
+            "fill_accounting_enabled": (
+                getattr(recovery, "fill_accounting", None) is not None
+            ),
+            "position_recovery_enabled": (
+                getattr(self.runtime, "position_recovery_manager", None) is not None
+            ),
+            "lifecycle_enabled": (
+                getattr(self.runtime, "lifecycle_service", None) is not None
+            ),
+        }
         return data
