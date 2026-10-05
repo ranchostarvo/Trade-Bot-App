@@ -34,7 +34,9 @@ def test_buy_workflow_reserves_durable_exposure(tmp_path):
     store, resources, flow = setup(tmp_path)
     result = flow.process("order-1", buy(), bot_id="bot-1")
     assert result["order_state"] == "RESERVED"
-    assert store.load_exposure_reservations("SPY") == {"bot-1": "100"}
+    assert store.load_pending_exposure() == {
+        "order-1": {"bot_id": "bot-1", "symbol": "SPY", "notional": "100"}
+    }
 
 
 def test_failed_execution_releases_exposure(tmp_path):
@@ -46,7 +48,7 @@ def test_failed_execution_releases_exposure(tmp_path):
     with pytest.raises(RuntimeError, match="intentionally not implemented"):
         flow.process("order-1", buy(), bot_id="bot-1")
 
-    assert store.load_exposure_reservations("SPY") == {}
+    assert store.load_pending_exposure() == {}
 
 
 def test_resources_require_bot_identity(tmp_path):
