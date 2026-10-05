@@ -17,10 +17,15 @@ class AuditEvent:
 
 
 class AuditLog:
-    """In-memory hash-chained audit log. Persistent storage comes later."""
+    """Hash-chained audit log with optional durable event storage."""
 
-    def __init__(self):
-        self._events: list[AuditEvent] = []
+    def __init__(self, store=None):
+        self.store = store
+        self._events: list[AuditEvent] = (
+            list(store.load_audit()) if store is not None else []
+        )
+        if not self.verify():
+            raise RuntimeError("Stored audit chain failed integrity verification.")
 
     def record(
         self,
@@ -46,6 +51,8 @@ class AuditLog:
         ).encode()
         event_hash = hashlib.sha256(encoded).hexdigest()
         event = AuditEvent(**payload, event_hash=event_hash)
+        if self.store is not None:
+            self.store.append_audit(event)
         self._events.append(event)
         return event
 
