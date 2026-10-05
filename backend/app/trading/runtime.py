@@ -22,16 +22,19 @@ class RuntimeStatus:
 
 
 class PaperTradingRuntime:
-    def __init__(self, execution_engine, recovery_manager, kill_switch):
+    def __init__(self, execution_engine, recovery_manager, kill_switch, position_recovery_manager=None):
         self.execution_engine = execution_engine
         self.recovery_manager = recovery_manager
         self.kill_switch = kill_switch
+        self.position_recovery_manager = position_recovery_manager
         self._started = False
         self._last_open_orders = 0
 
     def startup(self):
         self.kill_switch.validate()
         result = self.recovery_manager.reconcile_open_orders()
+        if self.position_recovery_manager is not None:
+            self.position_recovery_manager.reconcile_expected_positions()
         self.kill_switch.validate()
 
         self._started = True
