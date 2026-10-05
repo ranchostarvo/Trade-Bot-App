@@ -11,10 +11,11 @@ class RecoveryResult:
 
 
 class RecoveryManager:
-    def __init__(self, order_tracker, order_journal, fill_accounting=None):
+    def __init__(self, order_tracker, order_journal, fill_accounting=None, fill_checkpoint_store=None):
         self.order_tracker = order_tracker
         self.order_journal = order_journal
         self.fill_accounting = fill_accounting
+        self.fill_checkpoint_store = fill_checkpoint_store
 
     def reconcile_open_orders(self):
         saved = self.order_journal.open_orders()
@@ -23,8 +24,17 @@ class RecoveryManager:
         for order_id, previous in saved.items():
             checked += 1
             current = self.order_tracker.get(order_id)
-            previous_filled = Decimal(str(previous.get("filled_qty", "0")))
-            fill_delta = current.filled_qty - previous_filled
+            journal_filled = Decimal(str(previous.get("filled_qty", "0")))
+            accounted_filled = (
+                self.fill_checkpoint_store.get(order_id)
+                if self.fill_checkpoint_store is not None
+                else journal_filled
+            )
+            if accounted_filled > current.filled_qty:
+                raise RuntimeError(
+                    f"Accounted fill exceeds broker fill for order {order_id}."
+                )
+            fill_delta = current.filled_qty - accounted_filled
 
             if fill_delta < 0:
                 raise RuntimeError(
@@ -48,6 +58,11 @@ class RecoveryManager:
                     terminal=current.terminal,
                 )
                 self.fill_accounting.apply(delta_state)
+                if self.fill_checkpoint_store is not None:
+                    self.fill_checkpoint_store.set(
+                        order_id,
+                        current.filled_qty,
+                    )
 
             self.order_journal.record(current)
 
