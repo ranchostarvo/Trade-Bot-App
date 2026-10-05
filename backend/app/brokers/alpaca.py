@@ -85,7 +85,26 @@ class AlpacaClient:
     def get_account(self):
         return self._request("GET", "/v2/account")
 
-    def get_order(self, order_id):\n        if not order_id or not str(order_id).strip():\n            raise AlpacaError("Order ID is required.")\n\n        return self._request(\n            "GET",\n            f"/v2/orders/{str(order_id).strip()}",\n        )\n\n    def health_check(self):
+    def get_order(self, order_id):
+        if not order_id or not str(order_id).strip():
+            raise AlpacaError("Order ID is required.")
+
+        return self._request(
+            "GET",
+            f"/v2/orders/{str(order_id).strip()}",
+        )
+
+    def get_position(self, symbol):
+        symbol = str(symbol or "").strip().upper()
+        if not symbol:
+            raise AlpacaError("Symbol is required.")
+
+        return self._request(
+            "GET",
+            f"/v2/positions/{symbol}",
+        )
+
+    def health_check(self):
         account = self.get_account()
 
         return {
