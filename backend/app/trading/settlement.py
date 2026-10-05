@@ -32,16 +32,17 @@ class ExposureSettlement:
             raise SettlementRejected(
                 "SELL exposure settlement requires FILLED order state."
             )
-        if not self._claim(managed_order.order_id, "FILLED_SELL"):
-            return False
-        try:
-            self.resources.release_symbol_exposure(
-                bot_id, request.symbol, request.notional
+        store = getattr(self.resources, "store", None)
+        if store is not None:
+            return store.settle_filled_sell_atomically(
+                managed_order.order_id,
+                bot_id,
+                request.symbol,
+                request.notional,
             )
-        except Exception:
-            # Claim-before-effect prevents duplicate financial effects, but a
-            # failed effect requires operator reconciliation before retry.
-            raise
+        self.resources.release_symbol_exposure(
+            bot_id, request.symbol, request.notional
+        )
         return True
 
 
