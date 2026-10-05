@@ -61,6 +61,11 @@ class BuyTransitionRecovery:
                         "Interrupted buy transition lacks cumulative checkpoint target; "
                         "manual reconciliation is required."
                     )
+                checkpoint_qty, checkpoint_value = checkpoint
+                if checkpoint_qty < quantity or checkpoint_value < notional:
+                    raise RiskRejected(
+                        "Buy transition checkpoint is inconsistent with journal."
+                    )
                 self.journal.complete(order_id)
                 recovered += 1
             elif status not in ("prepared", "exposure_applied", "allocation_applied"):
