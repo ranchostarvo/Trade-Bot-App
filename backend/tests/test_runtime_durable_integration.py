@@ -20,7 +20,7 @@ def test_runtime_wires_one_shared_kill_switch_with_durable_services(tmp_path):
 
     assert runtime.fleet.kill_switch is runtime.kill_switch
     assert runtime.risk.kill_switch is runtime.kill_switch
-    assert runtime.execution.risk_engine is runtime.risk
+    assert runtime.execution.risk is runtime.risk
     assert runtime.resources.store is store
     assert runtime.settlement.resources is runtime.resources
     assert runtime.broker_orders.store is store
