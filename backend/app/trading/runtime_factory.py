@@ -7,6 +7,9 @@ from app.brokers.alpaca import AlpacaClient
 from .account_state import AlpacaAccountStateProvider
 from .equity_baseline import EquityBaselineStore
 from .execution import ExecutionEngine
+from .exchange_calendar import AlpacaExchangeCalendar
+from .market_session import USMarketSessionClock
+from .session_guard import MarketSessionGuard
 from .kill_switch import KillSwitch
 from .order_journal import OrderJournal
 from .order_tracker import OrderTracker
@@ -75,12 +78,17 @@ def build_paper_runtime(
         dry_run=bool(dry_run),
     ))
     ledger = SubmissionLedger(paths.submission_ledger)
+    session_guard = MarketSessionGuard(
+        USMarketSessionClock(),
+        AlpacaExchangeCalendar(broker),
+    )
     execution = ExecutionEngine(
         risk_engine=risk,
         kill_switch=kill_switch,
         account_state_provider=account,
         broker=broker,
         submission_ledger=ledger,
+        session_guard=session_guard,
     )
     journal = OrderJournal(paths.order_journal)
     tracker = OrderTracker(broker)
