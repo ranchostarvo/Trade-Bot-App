@@ -12,6 +12,7 @@ from .exchange_calendar import AlpacaExchangeCalendar
 from .market_session import USMarketSessionClock
 from .session_guard import MarketSessionGuard
 from .kill_switch import KillSwitch
+from .lifecycle import OrderLifecycleService
 from .order_journal import OrderJournal
 from .order_tracker import OrderTracker
 from .position_reconciler import PositionReconciler
@@ -111,10 +112,17 @@ def build_paper_runtime(
         PositionReconciler(broker),
         position_store,
     )
+    lifecycle = OrderLifecycleService(
+        execution,
+        journal,
+        tracker,
+        fill_accounting,
+    )
 
     return PaperTradingRuntime(
         execution_engine=execution,
         recovery_manager=recovery,
         kill_switch=kill_switch,
         position_recovery_manager=position_recovery,
+        lifecycle_service=lifecycle,
     )
