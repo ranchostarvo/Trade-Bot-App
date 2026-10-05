@@ -96,3 +96,20 @@ class AlpacaClient:
             "account_blocked": account.get("account_blocked"),
             "buying_power": account.get("buying_power"),
         }
+
+    def submit_order(self, order_payload):
+        if not self.config.paper:
+            raise AlpacaError(
+                "Safety violation: order submission requires paper mode."
+            )
+
+        if "paper-api.alpaca.markets" not in self.config.base_url:
+            raise AlpacaError(
+                "Safety violation: refusing non-paper Alpaca endpoint."
+            )
+
+        return self._request(
+            "POST",
+            "/v2/orders",
+            json=order_payload,
+        )
