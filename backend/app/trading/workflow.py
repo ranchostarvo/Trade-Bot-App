@@ -53,12 +53,6 @@ class DurableExecutionWorkflow:
             self.store.save_managed_order(managed)
 
             exposure_released = False
-            if (
-                self.resources is not None
-                and request.side.lower() == "sell"
-            ):
-                self.resources.release_pending_exposure(order_id)
-                exposure_released = True
 
             return {
                 **result,
@@ -72,9 +66,7 @@ class DurableExecutionWorkflow:
                 self.resources is not None
                 and locals().get("exposure_reserved", False)
             ):
-                self.resources.release_symbol_exposure(
-                    bot_id, request.symbol, request.notional
-                )
+                self.resources.release_pending_exposure(order_id)
             if not managed.terminal:
                 managed.transition(OrderState.REJECTED, reason=str(exc))
                 self.store.save_managed_order(managed)
