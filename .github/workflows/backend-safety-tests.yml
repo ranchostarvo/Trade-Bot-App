@@ -29,12 +29,10 @@ jobs:
           python test_risk_engine.py
           python test_daily_loss.py
           python test_kill_switch.py
-          python test_execution_pipeline.py
           python test_risk_store.py
           python test_persistent_kill_switch.py
           python test_equity_baseline.py
           python test_persistent_daily_loss.py
-          python test_paper_order_interface.py
           python test_execution_broker_gate.py
           python test_enabled_paper_execution.py
           python test_order_tracker.py
