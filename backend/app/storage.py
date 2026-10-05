@@ -160,3 +160,27 @@ class SQLiteStore:
             state=OrderState(row["state"]),
             reason=row["reason"],
         )
+
+
+    def create_order_atomically(self, order, idempotency_key: str) -> bool:
+        """Create lifecycle and idempotency records in one SQLite transaction."""
+        normalized = idempotency_key.strip()
+        if not normalized:
+            raise ValueError("Idempotency key is required.")
+        try:
+            with self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                connection.execute(
+                    "INSERT INTO order_idempotency(key) VALUES (?)",
+                    (normalized,),
+                )
+                connection.execute(
+                    """
+                    INSERT INTO managed_orders(order_id, state, reason)
+                    VALUES (?, ?, ?)
+                    """,
+                    (order.order_id, order.state.value, order.reason),
+                )
+            return True
+        except sqlite3.IntegrityError:
+            return False
