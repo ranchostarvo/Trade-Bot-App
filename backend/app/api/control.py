@@ -23,6 +23,11 @@ class EmergencyStopRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=256)
 
 
+class ReauthorizeRequest(BaseModel):
+    confirmation: str = Field(min_length=1, max_length=64)
+    operator_note: str = Field(min_length=1, max_length=256)
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "broker_execution": False}
@@ -86,3 +91,22 @@ def emergency_stop(request: EmergencyStopRequest):
     except Exception as exc:
         audit.record("EMERGENCY_STOP", "REJECTED", "fleet", str(exc))
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/fleet/reauthorize", dependencies=[Depends(require_control_token)])
+def reauthorize(request: ReauthorizeRequest):
+    try:
+        fleet.kill_switch.reset(request.confirmation)
+        audit.record(
+            "FLEET_REAUTHORIZE", "SUCCESS", "fleet", request.operator_note
+        )
+        return {
+            "kill_switch": False,
+            "bots_started": 0,
+            "message": "Fleet re-authorized. Bots remain stopped.",
+        }
+    except Exception as exc:
+        audit.record(
+            "FLEET_REAUTHORIZE", "REJECTED", "fleet", request.operator_note
+        )
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
