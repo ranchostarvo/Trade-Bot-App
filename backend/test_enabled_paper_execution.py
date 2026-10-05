@@ -12,6 +12,11 @@ from app.trading.risk import (
 from app.trading.submission_ledger import SubmissionLedger
 
 
+class VerifiedSessionGuard:
+    def validate(self):
+        return True
+
+
 class TestAccountProvider:
     def get_risk_state(self):
         return AccountRiskState(
@@ -45,6 +50,7 @@ with tempfile.TemporaryDirectory() as directory:
         account_state_provider=TestAccountProvider(),
         broker=broker,
         submission_ledger=SubmissionLedger(Path(directory) / "ledger.json"),
+    session_guard=VerifiedSessionGuard(),
     )
 
     order = OrderRequest(
