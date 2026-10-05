@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
