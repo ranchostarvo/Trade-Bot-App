@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from .risk import AccountRiskState, RiskRejected
 
@@ -40,7 +40,7 @@ class BrokerRiskStateProvider:
 
         try:
             start = Decimal(str(saved["equity"]))
-        except (ValueError, TypeError) as exc:
+        except (InvalidOperation, ValueError, TypeError) as exc:
             raise RiskRejected("Stored equity baseline is invalid.") from exc
 
         return AccountRiskState(
