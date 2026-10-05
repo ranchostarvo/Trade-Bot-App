@@ -15,6 +15,7 @@ class OrderLifecycleService:
         sell_fill_checkpoints=None,
         sell_transition_journal=None,
         capital_fill_checkpoints=None,
+        buy_transition_journal=None,
     ):
         self.execution_engine = execution_engine
         self.order_journal = order_journal
@@ -26,6 +27,7 @@ class OrderLifecycleService:
         self.sell_fill_checkpoints = sell_fill_checkpoints
         self.sell_transition_journal = sell_transition_journal
         self.capital_fill_checkpoints = capital_fill_checkpoints
+        self.buy_transition_journal = buy_transition_journal
 
     def submit(self, order, client_order_id):
         result = self.execution_engine.execute(
@@ -55,18 +57,30 @@ class OrderLifecycleService:
                 state.order_id, state.filled_qty, cumulative_value
             )
             if state.side == "buy" and delta_qty > 0:
+                if self.position_allocation_book is None or self.buy_transition_journal is None:
+                    raise RiskRejected("Persistent buy accounting components are required.")
                 allocation_id = f"buy:{state.order_id}:{state.filled_qty}"
+                self.buy_transition_journal.prepare(
+                    state.order_id,
+                    client_order_id,
+                    allocation_id,
+                    state.symbol,
+                    delta_qty,
+                    delta_value,
+                    state.terminal,
+                )
                 self.capital_transition.buy_fill(
                     client_order_id, allocation_id, delta_value, terminal=state.terminal
                 )
-                if self.position_allocation_book is None:
-                    raise RiskRejected("Persistent position allocation book is required.")
+                self.buy_transition_journal.mark_exposure_applied(state.order_id)
                 self.position_allocation_book.record_allocated_buy(
                     allocation_id, state.symbol, delta_qty, delta_value
                 )
+                self.buy_transition_journal.mark_allocation_applied(state.order_id)
                 self.capital_fill_checkpoints.commit(
                     state.order_id, state.filled_qty, cumulative_value
                 )
+                self.buy_transition_journal.complete(state.order_id)
             elif state.side == "sell" and delta_qty > 0:
                 if self.position_allocation_book is None or self.sell_transition_journal is None:
                     raise RiskRejected("Persistent sell accounting components are required.")
