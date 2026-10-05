@@ -4,6 +4,7 @@ import sqlite3
 from pathlib import Path
 
 from app.audit import AuditEvent
+from app.trading.order_state import ManagedOrder, OrderState
 
 
 class SQLiteStore:
