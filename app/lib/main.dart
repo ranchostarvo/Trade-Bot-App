@@ -114,8 +114,7 @@ class _DashboardState extends State<Dashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final runtime =
-        status?['runtime'] as Map<String, dynamic>? ?? const {};
+    final runtime = status?['runtime'] as Map<String, dynamic>? ?? const {};
     final summary = status?['bots'] as Map<String, dynamic>? ?? const {};
     final ready = readiness?['ready'] == true;
 
