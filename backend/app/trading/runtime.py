@@ -22,11 +22,12 @@ class RuntimeStatus:
 
 
 class PaperTradingRuntime:
-    def __init__(self, execution_engine, recovery_manager, kill_switch, position_recovery_manager=None):
+    def __init__(self, execution_engine, recovery_manager, kill_switch, position_recovery_manager=None, lifecycle_service=None):
         self.execution_engine = execution_engine
         self.recovery_manager = recovery_manager
         self.kill_switch = kill_switch
         self.position_recovery_manager = position_recovery_manager
+        self.lifecycle_service = lifecycle_service
         self._started = False
         self._last_open_orders = 0
 
@@ -66,6 +67,8 @@ class PaperTradingRuntime:
             )
 
         self.kill_switch.validate()
+        if self.lifecycle_service is not None:
+            return self.lifecycle_service.submit(order, client_order_id)
         return self.execution_engine.execute(
             order,
             client_order_id=client_order_id,
