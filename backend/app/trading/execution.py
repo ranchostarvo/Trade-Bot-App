@@ -1,5 +1,6 @@
 from .kill_switch import KillSwitch
 from .risk import OrderRequest, RiskEngine, RiskRejected
+from .submission_ledger import DuplicateOrder
 
 
 class ExecutionEngine:
@@ -9,74 +10,143 @@ class ExecutionEngine:
         kill_switch=None,
         account_state_provider=None,
         broker=None,
+        submission_ledger=None,
+        session_guard=None,
+        capital_coordinator=None,
+        available_cash_provider=None,
+        invested_capital_provider=None,
     ):
         self.risk = risk_engine or RiskEngine()
         self.kill_switch = kill_switch or KillSwitch()
         self.account_state_provider = account_state_provider
         self.broker = broker
+        self.submission_ledger = submission_ledger
+        self.session_guard = session_guard
+        self.capital_coordinator = capital_coordinator
+        self.available_cash_provider = available_cash_provider
+        self.invested_capital_provider = invested_capital_provider
 
-    def execute(self, order: OrderRequest):
-        # 1. GLOBAL KILL SWITCH
+    def execute(self, order: OrderRequest, client_order_id=None):
         self.kill_switch.validate()
 
-        # 2. FAIL-CLOSED ACCOUNT STATE
         if self.account_state_provider is None:
-            raise RiskRejected(
-                "Account risk-state provider is required."
-            )
+            raise RiskRejected("Account risk-state provider is required.")
 
         try:
-            account = (
-                self.account_state_provider.get_risk_state()
-            )
+            account = self.account_state_provider.get_risk_state()
         except Exception as exc:
             raise RiskRejected(
                 f"Unable to obtain valid account risk state: {exc}"
             ) from exc
 
-        # 3. ORDER + DAILY-LOSS VALIDATION
-        approval = self.risk.validate(
-            order,
-            account=account,
-        )
+        approval = self.risk.validate(order, account=account)
 
-        # 4. DEFAULT DRY-RUN INTERLOCK
-        if (
-            self.risk.config.dry_run
-            or not self.risk.config.trading_enabled
-        ):
+        if self.risk.config.dry_run or not self.risk.config.trading_enabled:
             return {
                 **approval,
                 "submitted": False,
                 "status": "DRY_RUN",
             }
 
-        # 5. FAIL CLOSED IF EXECUTION IS ENABLED
-        #    WITHOUT A BROKER.
         if self.broker is None:
+            raise RiskRejected("Broker is required for enabled execution.")
+
+        if self.session_guard is None:
             raise RiskRejected(
-                "Broker is required for enabled execution."
+                "Verified market session guard is required for enabled execution."
+            )
+        try:
+            self.session_guard.validate()
+        except RiskRejected:
+            raise
+        except Exception as exc:
+            raise RiskRejected(
+                f"Unable to verify market session: {exc}"
+            ) from exc
+
+        if self.submission_ledger is None:
+            raise RiskRejected(
+                "Persistent submission ledger is required for enabled execution."
             )
 
-        # 6. CONSTRUCT PAPER ORDER
+        client_order_id = str(client_order_id or "").strip()
+        if not client_order_id:
+            raise RiskRejected(
+                "client_order_id is required for enabled execution."
+            )
+
+        fingerprint = "|".join([
+            approval["symbol"],
+            approval["side"],
+            approval["quantity"],
+            approval["estimated_price"],
+            str(approval.get("requested_notional") or ""),
+        ])
+
+        if self.capital_coordinator is not None:
+            if self.available_cash_provider is None:
+                raise RiskRejected(
+                    "Available cash provider is required for capital coordination."
+                )
+            try:
+                available_cash = self.available_cash_provider()
+                invested_capital = (
+                    self.invested_capital_provider()
+                    if self.invested_capital_provider is not None
+                    else 0
+                )
+                self.capital_coordinator.reserve(
+                    client_order_id,
+                    approval["notional"],
+                    available_cash,
+                    invested_capital=invested_capital,
+                )
+            except RiskRejected:
+                raise
+            except Exception as exc:
+                raise RiskRejected(
+                    f"Unable to reserve portfolio capital: {exc}"
+                ) from exc
+
+        try:
+            self.submission_ledger.reserve(client_order_id, fingerprint)
+        except DuplicateOrder as exc:
+            if self.capital_coordinator is not None:
+                self.capital_coordinator.release(client_order_id)
+            raise RiskRejected(str(exc)) from exc
+        except Exception as exc:
+            if self.capital_coordinator is not None:
+                self.capital_coordinator.release(client_order_id)
+            raise RiskRejected(
+                f"Unable to reserve order idempotency key: {exc}"
+            ) from exc
+
         payload = {
             "symbol": approval["symbol"],
-            "qty": approval["quantity"],
             "side": approval["side"],
             "type": "market",
             "time_in_force": "day",
+            "client_order_id": client_order_id,
         }
+        if approval.get("requested_notional") is not None:
+            payload["notional"] = approval["requested_notional"]
+        else:
+            payload["qty"] = approval["quantity"]
 
-        # AlpacaClient.submit_order() independently
-        # refuses non-paper configuration.
-        response = self.broker.submit_order(payload)
+        try:
+            response = self.broker.submit_order(payload)
+        except Exception as exc:
+            # Transmission is ambiguous once the broker call begins. Keep both
+            # idempotency and capital reservations intact for read-only recovery.
+            raise RiskRejected(
+                "Broker submission outcome is ambiguous; reservations retained "
+                f"for reconciliation: {exc}"
+            ) from exc
 
         return {
             **approval,
             "submitted": True,
-            "status": response.get(
-                "status",
-                "submitted",
-            ),
+            "status": response.get("status", "submitted"),
             "broker_order_id": response.get("id"),
+            "client_order_id": client_order_id,
         }

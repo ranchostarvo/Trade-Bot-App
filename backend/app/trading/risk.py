@@ -12,9 +12,12 @@ class OrderRequest:
     side: str
     quantity: Decimal
     estimated_price: Decimal
+    requested_notional: Decimal | None = None
 
     @property
     def notional(self) -> Decimal:
+        if self.requested_notional is not None:
+            return self.requested_notional
         return self.quantity * self.estimated_price
 
 
@@ -77,8 +80,16 @@ class RiskEngine:
         if side not in {"buy", "sell"}:
             raise RiskRejected("Side must be buy or sell.")
 
-        if order.quantity <= 0:
+        if order.requested_notional is None and order.quantity <= 0:
             raise RiskRejected("Quantity must be greater than zero.")
+
+        if order.requested_notional is not None:
+            if order.requested_notional <= 0:
+                raise RiskRejected("Requested notional must be greater than zero.")
+            if order.quantity != 0:
+                raise RiskRejected(
+                    "Notional orders must use quantity=0 to avoid ambiguous sizing."
+                )
 
         if order.estimated_price <= 0:
             raise RiskRejected("Estimated price must be greater than zero.")
@@ -99,6 +110,11 @@ class RiskEngine:
             "symbol": symbol,
             "side": side,
             "quantity": str(order.quantity),
+            "requested_notional": (
+                str(order.requested_notional)
+                if order.requested_notional is not None
+                else None
+            ),
             "estimated_price": str(order.estimated_price),
             "notional": str(order.notional),
             "daily_loss_pct": (

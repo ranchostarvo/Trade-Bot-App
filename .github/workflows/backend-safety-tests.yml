@@ -1,0 +1,126 @@
+name: Backend Safety Tests
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        run: pip install -r requirements.txt
+      - name: Run deterministic offline safety tests
+        env:
+          PYTHONPATH: .
+        run: |
+          python test_risk_engine.py
+          python test_daily_loss.py
+          python test_kill_switch.py
+          python test_risk_store.py
+          python test_persistent_kill_switch.py
+          python test_equity_baseline.py
+          python test_persistent_daily_loss.py
+          python test_execution_broker_gate.py
+          python test_enabled_paper_execution.py
+          python test_order_tracker.py
+          python test_order_journal.py
+          python test_position_reconciler.py
+          python test_restart_recovery.py
+          python test_submission_ledger.py
+          python test_execution_idempotency.py
+          python test_submission_recovery.py
+          python test_paper_runtime.py
+          python test_runtime_factory.py
+          python test_runtime_status.py
+          python test_notional_execution.py
+          python test_market_session.py
+          python test_exchange_calendar.py
+          python test_session_guard.py
+          python test_diagnostics.py
+          python test_position_snapshot.py
+          python test_position_recovery.py
+          python test_early_close.py
+          python test_fill_accounting.py
+          python test_recovered_fill_accounting.py
+          python test_order_lifecycle.py
+          python test_runtime_lifecycle.py
+          python test_fill_checkpoint_recovery.py
+          python test_atomic_fill_recovery.py
+          python test_restart_soak.py
+          python test_multi_order_soak.py
+          python test_100_bot_recovery_soak.py
+          python test_capital_coordinator.py
+          python test_capital_persistence.py
+          python test_capital_execution_cleanup.py
+          python test_capital_runtime_wiring.py
+          python test_capital_lifecycle.py
+          python test_capital_lifecycle_service.py
+          python test_ambiguous_capital_reservation.py
+          python test_submission_recovery_capital.py
+          python test_bot_orchestrator.py
+          python test_bot_orchestrator_fail_fast.py
+          python test_bot_registry.py
+          python test_atomic_immediate_fill.py
+          python test_capital_transition.py
+          python test_capital_fill_checkpoint.py
+          python test_buy_transition_recovery.py
+          python test_exposure_ledger.py
+          python test_position_allocation.py
+          python test_sell_transition_recovery.py
+          python test_combined_capital_ceiling.py
+          python test_risk_profiles.py
+          python test_virtual_broker.py
+          python test_virtual_broker_fault_matrix.py
+          python test_100_bot_virtual_trading_day.py
+          python test_bot_orchestrator_preflight.py
+          python test_bot_risk_profile_preflight.py
+          python test_100_bot_mixed_profile_preflight.py
+          python test_readiness.py
+          python test_readiness_summary.py
+          python test_release_gate.py
+          python test_release_evidence_matrix.py
+          python test_paper_v1_rc_evidence.py
+          python test_paper_validation.py
+          python test_bot_manager.py
+          python test_operator_service.py
+          python test_operator_api.py
+          python test_operator_api_production_contract.py
+          python test_asset_analyzer.py
+          python test_alpaca_paper_boundary.py
+          python test_operator_asset_analysis.py
+          python test_system_invariants.py
+          python test_system_invariants_full.py
+          python test_100_bot_virtual_day.py
+
+
+  operational-ui:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: false
+      - run: flutter pub get
+      - run: dart format lib test
+      - run: git diff --exit-code -- lib test
+      - run: flutter analyze
+      - run: flutter test

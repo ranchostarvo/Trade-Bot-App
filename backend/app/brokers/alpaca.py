@@ -32,9 +32,12 @@ class AlpacaConfig:
         if not secret_key:
             raise AlpacaError("ALPACA_SECRET_KEY is missing.")
 
-        # Safety interlock:
-        # paper mode must never point at the live endpoint.
-        if paper and "paper-api.alpaca.markets" not in base_url:
+        # Paper v1 is paper-only. A false flag or non-paper endpoint is a
+        # configuration error, not an alternate operating mode.
+        if not paper:
+            raise AlpacaError("Safety violation: Paper v1 requires ALPACA_PAPER=true.")
+
+        if base_url != "https://paper-api.alpaca.markets":
             raise AlpacaError(
                 "Safety violation: paper mode is not using "
                 "the Alpaca paper endpoint."
@@ -85,6 +88,48 @@ class AlpacaClient:
     def get_account(self):
         return self._request("GET", "/v2/account")
 
+    def get_order(self, order_id):
+        if not order_id or not str(order_id).strip():
+            raise AlpacaError("Order ID is required.")
+
+        return self._request(
+            "GET",
+            f"/v2/orders/{str(order_id).strip()}",
+        )
+
+    def get_order_by_client_id(self, client_order_id):
+        client_order_id = str(client_order_id or "").strip()
+        if not client_order_id:
+            raise AlpacaError("Client order ID is required.")
+
+        return self._request(
+            "GET",
+            "/v2/orders:by_client_order_id",
+            params={"client_order_id": client_order_id},
+        )
+
+    def get_calendar(self, start, end):
+        start = str(start or "").strip()
+        end = str(end or "").strip()
+        if not start or not end:
+            raise AlpacaError("Calendar start and end dates are required.")
+
+        return self._request(
+            "GET",
+            "/v2/calendar",
+            params={"start": start, "end": end},
+        )
+
+    def get_position(self, symbol):
+        symbol = str(symbol or "").strip().upper()
+        if not symbol:
+            raise AlpacaError("Symbol is required.")
+
+        return self._request(
+            "GET",
+            f"/v2/positions/{symbol}",
+        )
+
     def health_check(self):
         account = self.get_account()
 
@@ -103,7 +148,7 @@ class AlpacaClient:
                 "Safety violation: order submission requires paper mode."
             )
 
-        if "paper-api.alpaca.markets" not in self.config.base_url:
+        if self.config.base_url != "https://paper-api.alpaca.markets":
             raise AlpacaError(
                 "Safety violation: refusing non-paper Alpaca endpoint."
             )
