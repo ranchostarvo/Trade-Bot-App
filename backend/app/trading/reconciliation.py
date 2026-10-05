@@ -34,7 +34,7 @@ class AlpacaReconciler:
             raise AlpacaError("Account response is missing required values.") from exc
 
     def position_book(self) -> PositionBook:
-        data = self.client._request("GET", "/v2/positions")
+        data = self.client.get_positions()
         if not isinstance(data, list):
             raise AlpacaError("Positions response must be a list.")
         positions = []
@@ -54,3 +54,13 @@ class AlpacaReconciler:
         account = self.account_snapshot()
         positions = self.position_book()
         return account, positions
+
+
+    def order_status(self, order_id: str) -> str:
+        data = self.client.get_order(order_id)
+        if not isinstance(data, dict):
+            raise AlpacaError("Order response must be an object.")
+        status = str(data.get("status", "")).strip().lower()
+        if not status:
+            raise AlpacaError("Order response is missing status.")
+        return status
