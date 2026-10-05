@@ -44,6 +44,14 @@ class SQLiteStore:
                 )
                 """
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS order_idempotency (
+                    key TEXT PRIMARY KEY,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
 
     def append_audit(self, event: AuditEvent) -> None:
         with self._connect() as connection:
@@ -90,3 +98,26 @@ class SQLiteStore:
                 "SELECT value FROM app_state WHERE key = ?", (key,)
             ).fetchone()
         return default if row is None else json.loads(row["value"])
+
+
+    def reserve_order_key(self, key: str) -> bool:
+        normalized = key.strip()
+        if not normalized:
+            raise ValueError("Idempotency key is required.")
+        try:
+            with self._connect() as connection:
+                connection.execute(
+                    "INSERT INTO order_idempotency(key) VALUES (?)",
+                    (normalized,),
+                )
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def has_order_key(self, key: str) -> bool:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT 1 FROM order_idempotency WHERE key = ?",
+                (key.strip(),),
+            ).fetchone()
+        return row is not None
