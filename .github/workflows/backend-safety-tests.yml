@@ -69,5 +69,6 @@ jobs:
           python test_capital_lifecycle.py
           python test_capital_lifecycle_service.py
           python test_ambiguous_capital_reservation.py
+          python test_submission_recovery_capital.py
           python test_readiness.py
           python test_readiness_summary.py
