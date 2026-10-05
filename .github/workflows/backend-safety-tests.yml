@@ -94,6 +94,7 @@ jobs:
           python test_bot_manager.py
           python test_operator_service.py
           python test_operator_api.py
+          python test_operator_api_production_contract.py
           python test_system_invariants.py
           python test_system_invariants_full.py
           python test_100_bot_virtual_day.py
