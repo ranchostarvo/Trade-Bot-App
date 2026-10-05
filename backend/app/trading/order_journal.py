@@ -44,3 +44,13 @@ class OrderJournal:
 
     def get(self, order_id):
         return self._read().get(order_id)
+
+    def all(self):
+        return self._read()
+
+    def open_orders(self):
+        return {
+            order_id: item
+            for order_id, item in self._read().items()
+            if not item.get("terminal", False)
+        }
