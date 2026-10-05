@@ -71,5 +71,6 @@ jobs:
           python test_ambiguous_capital_reservation.py
           python test_submission_recovery_capital.py
           python test_bot_orchestrator.py
+          python test_bot_orchestrator_fail_fast.py
           python test_readiness.py
           python test_readiness_summary.py
