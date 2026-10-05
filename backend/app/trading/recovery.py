@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal
 
 
 @dataclass(frozen=True)
@@ -10,9 +11,10 @@ class RecoveryResult:
 
 
 class RecoveryManager:
-    def __init__(self, order_tracker, order_journal):
+    def __init__(self, order_tracker, order_journal, fill_accounting=None):
         self.order_tracker = order_tracker
         self.order_journal = order_journal
+        self.fill_accounting = fill_accounting
 
     def reconcile_open_orders(self):
         saved = self.order_journal.open_orders()
@@ -21,13 +23,31 @@ class RecoveryManager:
         for order_id, previous in saved.items():
             checked += 1
             current = self.order_tracker.get(order_id)
+            previous_filled = Decimal(str(previous.get("filled_qty", "0")))
+            fill_delta = current.filled_qty - previous_filled
+
+            if fill_delta < 0:
+                raise RuntimeError(
+                    f"Broker fill quantity regressed for order {order_id}."
+                )
 
             if (
                 current.status != previous.get("status")
-                or str(current.filled_qty)
-                != str(previous.get("filled_qty", "0"))
+                or fill_delta != 0
             ):
                 updated += 1
+
+            if fill_delta and self.fill_accounting is not None:
+                delta_state = type(current)(
+                    order_id=current.order_id,
+                    symbol=current.symbol,
+                    side=current.side,
+                    status=current.status,
+                    filled_qty=fill_delta,
+                    filled_avg_price=current.filled_avg_price,
+                    terminal=current.terminal,
+                )
+                self.fill_accounting.apply(delta_state)
 
             self.order_journal.record(current)
 
