@@ -12,6 +12,8 @@ class ExecutionEngine:
         broker=None,
         submission_ledger=None,
         session_guard=None,
+        capital_coordinator=None,
+        available_cash_provider=None,
     ):
         self.risk = risk_engine or RiskEngine()
         self.kill_switch = kill_switch or KillSwitch()
@@ -19,6 +21,8 @@ class ExecutionEngine:
         self.broker = broker
         self.submission_ledger = submission_ledger
         self.session_guard = session_guard
+        self.capital_coordinator = capital_coordinator
+        self.available_cash_provider = available_cash_provider
 
     def execute(self, order: OrderRequest, client_order_id=None):
         self.kill_switch.validate()
@@ -76,6 +80,25 @@ class ExecutionEngine:
             approval["estimated_price"],
             str(approval.get("requested_notional") or ""),
         ])
+
+        if self.capital_coordinator is not None:
+            if self.available_cash_provider is None:
+                raise RiskRejected(
+                    "Available cash provider is required for capital coordination."
+                )
+            try:
+                available_cash = self.available_cash_provider()
+                self.capital_coordinator.reserve(
+                    client_order_id,
+                    approval["notional"],
+                    available_cash,
+                )
+            except RiskRejected:
+                raise
+            except Exception as exc:
+                raise RiskRejected(
+                    f"Unable to reserve portfolio capital: {exc}"
+                ) from exc
 
         try:
             self.submission_ledger.reserve(client_order_id, fingerprint)
