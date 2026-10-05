@@ -17,7 +17,7 @@ class USMarketSessionClock:
     def now(self):
         return datetime.now(self.timezone)
 
-    def session(self, moment=None):
+    def session(self, moment=None, market_open=None):
         moment = moment or self.now()
         if moment.tzinfo is None:
             moment = moment.replace(tzinfo=self.timezone)
@@ -25,8 +25,9 @@ class USMarketSessionClock:
             moment = moment.astimezone(self.timezone)
 
         weekday = moment.weekday() < 5
+        scheduled_open = weekday if market_open is None else bool(market_open)
         regular_hours = (
-            weekday
+            scheduled_open
             and self.open_time <= moment.time().replace(tzinfo=None) < self.close_time
         )
         return MarketSession(
