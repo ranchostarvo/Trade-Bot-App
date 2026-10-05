@@ -26,6 +26,9 @@ class PaperV1ReleaseGate:
         "hundred_bot_preflight",
         "hundred_bot_virtual_day",
         "paper_only_boundary",
+        "system_invariants",
+        "operator_api",
+        "asset_analysis",
     )
 
     def assess(self, evidence):
