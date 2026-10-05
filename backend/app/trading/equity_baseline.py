@@ -1,5 +1,6 @@
 import json
-from datetime import date
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
@@ -64,7 +65,9 @@ class EquityBaselineStore:
         current_equity,
         trading_day=None,
     ):
-        trading_day = trading_day or date.today()
+        trading_day = trading_day or datetime.now(
+            ZoneInfo("America/New_York")
+        ).date()
 
         try:
             current_equity = Decimal(
