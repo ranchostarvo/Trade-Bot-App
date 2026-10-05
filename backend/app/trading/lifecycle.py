@@ -13,6 +13,7 @@ class OrderLifecycleService:
         capital_transition=None,
         position_allocation_book=None,
         sell_fill_checkpoints=None,
+        sell_transition_journal=None,
     ):
         self.execution_engine = execution_engine
         self.order_journal = order_journal
@@ -22,6 +23,7 @@ class OrderLifecycleService:
         self.capital_transition = capital_transition
         self.position_allocation_book = position_allocation_book
         self.sell_fill_checkpoints = sell_fill_checkpoints
+        self.sell_transition_journal = sell_transition_journal
 
     def submit(self, order, client_order_id):
         result = self.execution_engine.execute(
@@ -76,14 +78,20 @@ class OrderLifecycleService:
                     state.order_id, state.filled_qty
                 )
                 if delta_qty > 0:
+                    if self.sell_transition_journal is None:
+                        raise RiskRejected("Persistent sell transition journal is required.")
+                    previous_qty = state.filled_qty - delta_qty
+                    self.sell_transition_journal.prepare(
+                        state.order_id, state.symbol, previous_qty, state.filled_qty
+                    )
                     self.position_allocation_book.release_sell(
                         state.symbol, delta_qty
                     )
-                    # Commit only after cost-basis release succeeds. A crash
-                    # before this write remains fail-closed for reconciliation.
+                    self.sell_transition_journal.mark_applied(state.order_id)
                     self.sell_fill_checkpoints.commit(
                         state.order_id, state.filled_qty
                     )
+                    self.sell_transition_journal.complete(state.order_id)
         elif self.capital_lifecycle is not None:
             self.capital_lifecycle.reconcile(client_order_id, state)
 
