@@ -6,6 +6,7 @@ from app.brokers.alpaca import AlpacaClient
 
 from .account_state import AlpacaAccountStateProvider
 from .capital_coordinator import CapitalConfig, PortfolioCapitalCoordinator
+from .capital_lifecycle import CapitalLifecycle
 from .equity_baseline import EquityBaselineStore
 from .execution import ExecutionEngine
 from .fill_accounting import FillAccounting
@@ -140,6 +141,7 @@ def build_paper_runtime(
         journal,
         tracker,
         fill_accounting,
+        capital_lifecycle=CapitalLifecycle(capital),
     )
 
     return PaperTradingRuntime(
