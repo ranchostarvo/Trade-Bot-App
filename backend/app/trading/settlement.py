@@ -29,3 +29,11 @@ class ExposureSettlement:
         self.resources.release_symbol_exposure(
             bot_id, request.symbol, request.notional
         )
+
+
+    def settle_terminal(self, managed_order):
+        if managed_order.state not in (OrderState.REJECTED, OrderState.CANCELED):
+            raise SettlementRejected(
+                "Pending exposure release requires REJECTED or CANCELED order state."
+            )
+        self.resources.release_pending_exposure(managed_order.order_id)
