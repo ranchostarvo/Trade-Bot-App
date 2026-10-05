@@ -80,6 +80,26 @@ class PortfolioCapitalCoordinator:
         self._write()
         return after
 
+    def get(self, reservation_id):
+        return self._reservations.get(str(reservation_id), Decimal("0"))
+
+    def reduce_to(self, reservation_id, remaining_notional):
+        key = str(reservation_id)
+        if key not in self._reservations:
+            raise RiskRejected("Capital reservation does not exist.")
+        amount = Decimal(str(remaining_notional))
+        if amount < 0:
+            raise RiskRejected("Remaining capital reservation cannot be negative.")
+        current = self._reservations[key]
+        if amount > current:
+            raise RiskRejected("Capital reservation cannot increase during reconciliation.")
+        if amount == 0:
+            self._reservations.pop(key)
+        else:
+            self._reservations[key] = amount
+        self._write()
+        return amount
+
     def release(self, reservation_id):
         value = self._reservations.pop(str(reservation_id), Decimal("0"))
         self._write()
