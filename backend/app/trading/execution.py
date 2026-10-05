@@ -59,6 +59,7 @@ class ExecutionEngine:
             approval["side"],
             approval["quantity"],
             approval["estimated_price"],
+            str(approval.get("requested_notional") or ""),
         ])
 
         try:
@@ -72,12 +73,15 @@ class ExecutionEngine:
 
         payload = {
             "symbol": approval["symbol"],
-            "qty": approval["quantity"],
             "side": approval["side"],
             "type": "market",
             "time_in_force": "day",
             "client_order_id": client_order_id,
         }
+        if approval.get("requested_notional") is not None:
+            payload["notional"] = approval["requested_notional"]
+        else:
+            payload["qty"] = approval["quantity"]
 
         response = self.broker.submit_order(payload)
 
