@@ -46,3 +46,4 @@ jobs:
           python test_runtime_factory.py
           python test_runtime_status.py
           python test_notional_execution.py
+          python test_market_session.py
