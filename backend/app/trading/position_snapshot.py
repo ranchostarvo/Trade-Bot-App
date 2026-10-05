@@ -36,6 +36,35 @@ class PositionSnapshotStore:
                 f"Unable to save position snapshot: {exc}"
             ) from exc
 
+    def seed_accounted_fill(self, order_id, cumulative_filled_qty):
+        """Seed legacy recovery progress without changing the position."""
+        order_id = str(order_id or "").strip()
+        if not order_id:
+            raise PositionMismatch("Order ID is required.")
+        try:
+            cumulative = Decimal(str(cumulative_filled_qty))
+        except (InvalidOperation, TypeError) as exc:
+            raise PositionMismatch("Invalid cumulative fill quantity.") from exc
+        if cumulative < 0:
+            raise PositionMismatch("Cumulative fill quantity cannot be negative.")
+
+        data = self._read()
+        if "_positions" not in data:
+            data = {
+                "_positions": {
+                    key: value for key, value in data.items()
+                    if not key.startswith("_")
+                },
+                "_accounted_fills": {},
+            }
+        accounted = data.setdefault("_accounted_fills", {})
+        existing = Decimal(str(accounted.get(order_id, "0")))
+        if existing > cumulative:
+            raise PositionMismatch("Accounted fill exceeds legacy recovery state.")
+        accounted[order_id] = str(cumulative)
+        self._write(data)
+        return cumulative
+
     def apply_fill_once(self, order_id, symbol, side, cumulative_filled_qty):
         """Atomically persist position and per-order cumulative fill progress."""
         order_id = str(order_id or "").strip()
