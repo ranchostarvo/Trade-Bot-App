@@ -11,6 +11,7 @@ class OrderLifecycleService:
         fill_accounting,
         capital_lifecycle=None,
         capital_transition=None,
+        position_allocation_book=None,
     ):
         self.execution_engine = execution_engine
         self.order_journal = order_journal
@@ -18,6 +19,7 @@ class OrderLifecycleService:
         self.fill_accounting = fill_accounting
         self.capital_lifecycle = capital_lifecycle
         self.capital_transition = capital_transition
+        self.position_allocation_book = position_allocation_book
 
     def submit(self, order, client_order_id):
         result = self.execution_engine.execute(
@@ -43,16 +45,39 @@ class OrderLifecycleService:
             fill_notional = state.filled_qty * state.filled_avg_price
             allocation_id = f"{client_order_id}:{state.order_id}:{state.filled_qty}"
             if state.side == "buy":
-                self.capital_transition.buy_fill(
-                    client_order_id,
-                    allocation_id,
-                    fill_notional,
-                    terminal=state.terminal,
-                )
+                # Allocation identity is cumulative-fill specific, making
+                # repeated observation of the same broker state idempotent.
+                if (
+                    self.position_allocation_book is None
+                    or self.position_allocation_book.get(allocation_id) is None
+                ):
+                    self.capital_transition.buy_fill(
+                        client_order_id,
+                        allocation_id,
+                        fill_notional,
+                        terminal=state.terminal,
+                    )
+                    if self.position_allocation_book is not None:
+                        self.position_allocation_book._positions[allocation_id] = __import__(
+                            "app.trading.position_allocation",
+                            fromlist=["PositionAllocation"],
+                        ).PositionAllocation(
+                            allocation_id, state.symbol, state.filled_qty, fill_notional
+                        )
+                        self.position_allocation_book._write()
             elif state.side == "sell":
-                # Sell allocation mapping is reconciled against persistent
-                # position accounting before production use.
-                pass
+                if self.position_allocation_book is None:
+                    raise RiskRejected("Persistent position allocation book is required for sells.")
+                sell_key = f"sell:{state.order_id}:{state.filled_qty}"
+                # Fill accounting makes cumulative quantity replay-safe; only
+                # release cost basis when this sell checkpoint is new.
+                if not hasattr(self, "_sell_checkpoints"):
+                    self._sell_checkpoints = set()
+                if sell_key not in self._sell_checkpoints:
+                    self.position_allocation_book.release_sell(
+                        state.symbol, state.filled_qty
+                    )
+                    self._sell_checkpoints.add(sell_key)
         elif self.capital_lifecycle is not None:
             self.capital_lifecycle.reconcile(client_order_id, state)
 
