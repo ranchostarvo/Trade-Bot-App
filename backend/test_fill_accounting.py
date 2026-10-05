@@ -10,7 +10,7 @@ from app.trading.position_snapshot import PositionSnapshotStore
 
 def state(side, qty):
     return OrderState(
-        order_id="order-1",
+        order_id=f"order-{side}",
         symbol="SPY",
         side=side,
         status="filled",
