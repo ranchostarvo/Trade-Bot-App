@@ -8,9 +8,9 @@ from app.trading.position_reconciler import PositionMismatch
 from app.trading.position_snapshot import PositionSnapshotStore
 
 
-def state(side, qty):
+def state(side, qty, order_id=None):
     return OrderState(
-        order_id=f"order-{side}",
+        order_id=order_id or f"order-{side}",
         symbol="SPY",
         side=side,
         status="filled",
@@ -31,7 +31,7 @@ with TemporaryDirectory() as directory:
     assert store.get("SPY") == Decimal("0.015")
 
     try:
-        accounting.apply(state("sell", "0.02"))
+        accounting.apply(state("sell", "0.02", "order-oversell"))
         raise AssertionError("Oversell must fail closed.")
     except PositionMismatch:
         pass
