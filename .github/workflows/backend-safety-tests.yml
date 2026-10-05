@@ -72,5 +72,9 @@ jobs:
           python test_submission_recovery_capital.py
           python test_bot_orchestrator.py
           python test_bot_orchestrator_fail_fast.py
+          python test_bot_registry.py
+          python test_risk_profiles.py
+          python test_virtual_broker.py
+          python test_bot_orchestrator_preflight.py
           python test_readiness.py
           python test_readiness_summary.py
