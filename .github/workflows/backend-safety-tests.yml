@@ -77,6 +77,7 @@ jobs:
           python test_capital_transition.py
           python test_exposure_ledger.py
           python test_position_allocation.py
+          python test_sell_transition_recovery.py
           python test_combined_capital_ceiling.py
           python test_risk_profiles.py
           python test_virtual_broker.py
