@@ -25,7 +25,7 @@ class ExposureSettlement:
             raise SettlementRejected(
                 "BUY exposure settlement requires FILLED order state."
             )
-        self.resources.settle_pending_buy(managed_order.order_id)
+        return self.resources.settle_pending_buy(managed_order.order_id)
 
     def settle_sell(self, managed_order, bot_id, request):
         if managed_order.state is not OrderState.FILLED:
@@ -51,4 +51,4 @@ class ExposureSettlement:
             raise SettlementRejected(
                 "Pending exposure release requires REJECTED or CANCELED order state."
             )
-        self.resources.release_pending_exposure(managed_order.order_id)
+        store = getattr(self.resources, "store", None)\n        if store is not None:\n            return store.settle_terminal_pending_atomically(\n                managed_order.order_id, managed_order.state.value\n            )\n        self.resources.release_pending_exposure(managed_order.order_id)\n        return True
