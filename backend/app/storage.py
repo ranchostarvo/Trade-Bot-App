@@ -61,6 +61,14 @@ class SQLiteStore:
                 )
                 """
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS capital_reservations (
+                    bot_id TEXT PRIMARY KEY,
+                    amount TEXT NOT NULL
+                )
+                """
+            )
 
     def append_audit(self, event: AuditEvent) -> None:
         with self._connect() as connection:
@@ -184,3 +192,38 @@ class SQLiteStore:
             return True
         except sqlite3.IntegrityError:
             return False
+
+
+    def reserve_capital_atomically(self, bot_id: str, amount, account_cash) -> bool:
+        from decimal import Decimal
+
+        bot_id = bot_id.strip()
+        amount = Decimal(str(amount))
+        account_cash = Decimal(str(account_cash))
+        if not bot_id or amount <= 0 or account_cash < 0:
+            raise ValueError("Invalid capital reservation.")
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            rows = connection.execute(
+                "SELECT amount FROM capital_reservations"
+            ).fetchall()
+            reserved = sum(
+                (Decimal(row["amount"]) for row in rows), Decimal("0")
+            )
+            if reserved + amount > account_cash:
+                return False
+            try:
+                connection.execute(
+                    "INSERT INTO capital_reservations(bot_id, amount) VALUES (?, ?)",
+                    (bot_id, str(amount)),
+                )
+            except sqlite3.IntegrityError:
+                return False
+        return True
+
+    def load_capital_reservations(self) -> dict[str, str]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT bot_id, amount FROM capital_reservations"
+            ).fetchall()
+        return {row["bot_id"]: row["amount"] for row in rows}
