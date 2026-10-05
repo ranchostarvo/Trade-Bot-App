@@ -58,5 +58,6 @@ jobs:
           python test_order_lifecycle.py
           python test_runtime_lifecycle.py
           python test_fill_checkpoint_recovery.py
+          python test_atomic_fill_recovery.py
           python test_readiness.py
           python test_readiness_summary.py
