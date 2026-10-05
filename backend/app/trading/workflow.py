@@ -29,17 +29,12 @@ class DurableExecutionWorkflow:
             self.store.save_managed_order(managed)
 
             # The order key was already reserved atomically with CREATED state.
-            # Avoid a second reservation while preserving all broker-bound checks.
-            registry = self.execution.idempotency_registry
-            self.execution.idempotency_registry = None
-            try:
-                result = self.execution.execute(
-                    request,
-                    account_state=account_state,
-                    idempotency_key=order_id,
-                )
-            finally:
-                self.execution.idempotency_registry = registry
+            result = self.execution.execute(
+                request,
+                account_state=account_state,
+                idempotency_key=order_id,
+                idempotency_reserved=True,
+            )
 
             managed.transition(OrderState.RESERVED)
             self.store.save_managed_order(managed)
