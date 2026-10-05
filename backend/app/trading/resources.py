@@ -63,3 +63,14 @@ class DurableResourceCoordinator:
             raise DurableResourceRejected(
                 f"Exposure reservation rejected for bot {bot_id} {symbol}."
             )
+
+
+    def release_symbol_exposure(
+        self, bot_id: str, symbol: str, notional=None
+    ) -> None:
+        if not self.store.release_exposure_atomically(
+            bot_id, symbol, notional
+        ):
+            raise DurableResourceRejected(
+                f"No durable exposure reservation exists for bot {bot_id} {symbol}."
+            )
