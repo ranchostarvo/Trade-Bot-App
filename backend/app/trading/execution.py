@@ -103,8 +103,12 @@ class ExecutionEngine:
         try:
             self.submission_ledger.reserve(client_order_id, fingerprint)
         except DuplicateOrder as exc:
+            if self.capital_coordinator is not None:
+                self.capital_coordinator.release(client_order_id)
             raise RiskRejected(str(exc)) from exc
         except Exception as exc:
+            if self.capital_coordinator is not None:
+                self.capital_coordinator.release(client_order_id)
             raise RiskRejected(
                 f"Unable to reserve order idempotency key: {exc}"
             ) from exc
