@@ -69,6 +69,16 @@ class SQLiteStore:
                 )
                 """
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS exposure_reservations (
+                    bot_id TEXT NOT NULL,
+                    symbol TEXT NOT NULL,
+                    notional TEXT NOT NULL,
+                    PRIMARY KEY(bot_id, symbol)
+                )
+                """
+            )
 
     def append_audit(self, event: AuditEvent) -> None:
         with self._connect() as connection:
@@ -227,3 +237,56 @@ class SQLiteStore:
                 "SELECT bot_id, amount FROM capital_reservations"
             ).fetchall()
         return {row["bot_id"]: row["amount"] for row in rows}
+
+
+    def reserve_exposure_atomically(
+        self, bot_id: str, symbol: str, notional, account_equity,
+        max_symbol_notional, max_symbol_pct
+    ) -> bool:
+        from decimal import Decimal
+
+        bot_id = bot_id.strip()
+        symbol = symbol.strip().upper()
+        notional = Decimal(str(notional))
+        equity = Decimal(str(account_equity))
+        max_notional = Decimal(str(max_symbol_notional))
+        max_pct = Decimal(str(max_symbol_pct))
+        if not bot_id or not symbol or notional <= 0 or equity <= 0:
+            raise ValueError("Invalid exposure reservation.")
+
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            rows = connection.execute(
+                "SELECT notional FROM exposure_reservations WHERE symbol = ?",
+                (symbol,),
+            ).fetchall()
+            current = sum(
+                (Decimal(row["notional"]) for row in rows), Decimal("0")
+            )
+            proposed = current + notional
+            pct = (proposed / equity) * Decimal("100")
+            if proposed > max_notional or pct > max_pct:
+                return False
+            try:
+                connection.execute(
+                    """
+                    INSERT INTO exposure_reservations(bot_id, symbol, notional)
+                    VALUES (?, ?, ?)
+                    """,
+                    (bot_id, symbol, str(notional)),
+                )
+            except sqlite3.IntegrityError:
+                return False
+        return True
+
+    def load_exposure_reservations(self, symbol: str) -> dict[str, str]:
+        symbol = symbol.strip().upper()
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT bot_id, notional FROM exposure_reservations
+                WHERE symbol = ?
+                """,
+                (symbol,),
+            ).fetchall()
+        return {row["bot_id"]: row["notional"] for row in rows}
