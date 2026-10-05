@@ -43,6 +43,12 @@ class DurableResourceCoordinator:
                 f"Capital reservation rejected for bot {bot_id}."
             )
 
+    def release_bot_capital(self, bot_id: str) -> None:
+        if not self.store.release_capital_atomically(bot_id):
+            raise DurableResourceRejected(
+                f"No durable capital reservation exists for bot {bot_id}."
+            )
+
     def reserve_symbol_exposure(
         self, bot_id: str, symbol: str, notional: Decimal
     ) -> None:
