@@ -36,6 +36,48 @@ class PositionSnapshotStore:
                 f"Unable to save position snapshot: {exc}"
             ) from exc
 
+    def apply_fill_once(self, order_id, symbol, side, cumulative_filled_qty):
+        """Atomically persist position and per-order cumulative fill progress."""
+        order_id = str(order_id or "").strip()
+        symbol = str(symbol or "").strip().upper()
+        side = str(side or "").strip().lower()
+        if not order_id or not symbol:
+            raise PositionMismatch("Order ID and symbol are required.")
+        if side not in {"buy", "sell"}:
+            raise PositionMismatch("Unsupported fill side.")
+
+        try:
+            cumulative = Decimal(str(cumulative_filled_qty))
+        except (InvalidOperation, TypeError) as exc:
+            raise PositionMismatch("Invalid cumulative fill quantity.") from exc
+        if cumulative < 0:
+            raise PositionMismatch("Cumulative fill quantity cannot be negative.")
+
+        data = self._read()
+        positions = data.get("_positions") if "_positions" in data else {
+            key: value for key, value in data.items() if not key.startswith("_")
+        }
+        accounted = data.get("_accounted_fills", {})
+        previous = Decimal(str(accounted.get(order_id, "0")))
+        if cumulative < previous:
+            raise PositionMismatch("Cumulative fill quantity regressed.")
+
+        delta = cumulative - previous
+        current = Decimal(str(positions.get(symbol, "0")))
+        expected = current + (delta if side == "buy" else -delta)
+        if expected < 0:
+            raise PositionMismatch(
+                f"Fill would create negative expected position for {symbol}."
+            )
+
+        positions[symbol] = str(expected)
+        accounted[order_id] = str(cumulative)
+        self._write({
+            "_positions": positions,
+            "_accounted_fills": accounted,
+        })
+        return expected, delta
+
     def set(self, symbol, quantity):
         symbol = str(symbol or "").strip().upper()
         if not symbol:
@@ -46,17 +88,21 @@ class PositionSnapshotStore:
             raise PositionMismatch("Invalid expected position quantity.") from exc
 
         data = self._read()
-        data[symbol] = str(quantity)
+        if "_positions" in data:
+            data["_positions"][symbol] = str(quantity)
+        else:
+            data[symbol] = str(quantity)
         self._write(data)
         return quantity
 
     def get(self, symbol):
         symbol = str(symbol or "").strip().upper()
         data = self._read()
-        if symbol not in data:
+        positions = data.get("_positions", data)
+        if symbol not in positions:
             return None
         try:
-            return Decimal(str(data[symbol]))
+            return Decimal(str(positions[symbol]))
         except (InvalidOperation, TypeError) as exc:
             raise PositionMismatch(
                 f"Invalid persisted position for {symbol}."
