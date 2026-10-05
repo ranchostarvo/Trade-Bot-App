@@ -499,7 +499,7 @@ class SQLiteStore:
                 (order_id,),
             ).fetchone()
             if row is None:
-                raise ValueError("No pending BUY exposure exists for settlement.")
+                return False
 
             existing = connection.execute(
                 """
