@@ -36,3 +36,21 @@ class ProposalPipeline:
             "order_proposed": True,
             **result,
         }
+
+
+@dataclass
+class MarketProposalService:
+    """Read-only market data to dry-run proposal integration."""
+
+    provider: object
+    pipeline: ProposalPipeline
+
+    def evaluate_symbol(self, symbol: str, account_state=None):
+        market = self.provider.snapshot(symbol)
+        result = self.pipeline.process(market, account_state=account_state)
+        return {
+            "symbol": market.symbol,
+            "market_price": str(market.price),
+            "previous_close": str(market.previous_close),
+            **result,
+        }
