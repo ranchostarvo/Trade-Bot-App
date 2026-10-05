@@ -1,8 +1,9 @@
 from decimal import Decimal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from app.api.auth import require_control_token
 from app.trading.orchestrator import BotSpec, FleetOrchestrator
 
 app = FastAPI(title="Trade Bot Control API", version="0.1.0")
@@ -25,12 +26,12 @@ def health():
     return {"status": "ok", "broker_execution": False}
 
 
-@app.get("/fleet/status")
+@app.get("/fleet/status", dependencies=[Depends(require_control_token)])
 def fleet_status():
     return fleet.status()
 
 
-@app.post("/bots")
+@app.post("/bots", dependencies=[Depends(require_control_token)])
 def provision_bot(request: ProvisionRequest):
     try:
         bot = fleet.provision(BotSpec(request.bot_id, request.capital))
@@ -39,7 +40,7 @@ def provision_bot(request: ProvisionRequest):
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@app.post("/bots/{bot_id}/start")
+@app.post("/bots/{bot_id}/start", dependencies=[Depends(require_control_token)])
 def start_bot(bot_id: str):
     try:
         state = fleet.start(bot_id)
@@ -48,7 +49,7 @@ def start_bot(bot_id: str):
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@app.post("/bots/{bot_id}/pause")
+@app.post("/bots/{bot_id}/pause", dependencies=[Depends(require_control_token)])
 def pause_bot(bot_id: str):
     try:
         state = fleet.pause(bot_id)
@@ -57,7 +58,7 @@ def pause_bot(bot_id: str):
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@app.post("/bots/{bot_id}/stop")
+@app.post("/bots/{bot_id}/stop", dependencies=[Depends(require_control_token)])
 def stop_bot(bot_id: str):
     try:
         state = fleet.stop(bot_id)
@@ -66,7 +67,7 @@ def stop_bot(bot_id: str):
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@app.post("/fleet/emergency-stop")
+@app.post("/fleet/emergency-stop", dependencies=[Depends(require_control_token)])
 def emergency_stop(request: EmergencyStopRequest):
     try:
         return fleet.emergency_stop(request.reason)
