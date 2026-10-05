@@ -9,6 +9,8 @@ from .capital_coordinator import CapitalConfig, PortfolioCapitalCoordinator
 from .capital_lifecycle import CapitalLifecycle
 from .capital_transition import CapitalTransition
 from .capital_fill_checkpoint import CapitalFillCheckpointStore
+from .buy_transition_journal import BuyTransitionJournal
+from .buy_transition_recovery import BuyTransitionRecovery
 from .exposure_ledger import PortfolioExposureLedger
 from .equity_baseline import EquityBaselineStore
 from .execution import ExecutionEngine
@@ -86,6 +88,10 @@ class RuntimePaths:
     @property
     def capital_fill_checkpoint(self):
         return self.root / "capital_fill_checkpoint.json"
+
+    @property
+    def buy_transition_journal(self):
+        return self.root / "buy_transition_journal.json"
 
 
 def build_paper_runtime(
@@ -173,6 +179,11 @@ def build_paper_runtime(
         PositionReconciler(broker),
         position_store,
     )
+    capital_checkpoints = CapitalFillCheckpointStore(paths.capital_fill_checkpoint)
+    buy_journal = BuyTransitionJournal(paths.buy_transition_journal)
+    buy_recovery = BuyTransitionRecovery(
+        buy_journal, capital, exposure, position_allocations, capital_checkpoints
+    )
     sell_checkpoints = SellFillCheckpointStore(paths.sell_fill_checkpoints)
     sell_journal = SellTransitionJournal(paths.sell_transition_journal)
     sell_recovery = SellTransitionRecovery(
@@ -188,7 +199,8 @@ def build_paper_runtime(
         position_allocation_book=position_allocations,
         sell_fill_checkpoints=sell_checkpoints,
         sell_transition_journal=sell_journal,
-        capital_fill_checkpoints=CapitalFillCheckpointStore(paths.capital_fill_checkpoint),
+        capital_fill_checkpoints=capital_checkpoints,
+        buy_transition_journal=buy_journal,
     )
 
     return PaperTradingRuntime(
@@ -198,4 +210,5 @@ def build_paper_runtime(
         position_recovery_manager=position_recovery,
         lifecycle_service=lifecycle,
         sell_transition_recovery=sell_recovery,
+        buy_transition_recovery=buy_recovery,
     )
