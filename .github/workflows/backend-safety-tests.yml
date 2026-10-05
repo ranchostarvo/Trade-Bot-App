@@ -49,3 +49,4 @@ jobs:
           python test_market_session.py
           python test_exchange_calendar.py
           python test_session_guard.py
+          python test_diagnostics.py
