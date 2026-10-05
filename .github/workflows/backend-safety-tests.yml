@@ -97,6 +97,7 @@ jobs:
           python test_operator_api.py
           python test_operator_api_production_contract.py
           python test_asset_analyzer.py
+          python test_alpaca_paper_boundary.py
           python test_operator_asset_analysis.py
           python test_system_invariants.py
           python test_system_invariants_full.py
