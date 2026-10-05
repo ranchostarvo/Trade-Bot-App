@@ -99,8 +99,13 @@ class DurableResourceCoordinator:
             )
 
 
-    def settle_pending_buy(self, order_id: str) -> None:
-        if not self.store.settle_pending_buy_atomically(order_id):
+    def settle_pending_buy(self, order_id: str) -> bool:
+        try:
+            result = self.store.settle_pending_buy_atomically(order_id)
+        except ValueError as exc:
+            raise DurableResourceRejected(str(exc)) from exc
+        if result is False and self.store.load_order_settlement(order_id) is None:
             raise DurableResourceRejected(
                 f"No pending BUY exposure exists for order {order_id}."
             )
+        return result
