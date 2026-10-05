@@ -52,6 +52,15 @@ class SQLiteStore:
                 )
                 """
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS managed_orders (
+                    order_id TEXT PRIMARY KEY,
+                    state TEXT NOT NULL,
+                    reason TEXT
+                )
+                """
+            )
 
     def append_audit(self, event: AuditEvent) -> None:
         with self._connect() as connection:
@@ -121,3 +130,33 @@ class SQLiteStore:
                 (key.strip(),),
             ).fetchone()
         return row is not None
+
+
+    def save_managed_order(self, order) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO managed_orders(order_id, state, reason)
+                VALUES (?, ?, ?)
+                ON CONFLICT(order_id) DO UPDATE SET
+                    state=excluded.state,
+                    reason=excluded.reason
+                """,
+                (order.order_id, order.state.value, order.reason),
+            )
+
+    def load_managed_order(self, order_id: str):
+        from app.trading.order_state import ManagedOrder, OrderState
+
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT order_id, state, reason FROM managed_orders WHERE order_id = ?",
+                (order_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return ManagedOrder(
+            order_id=row["order_id"],
+            state=OrderState(row["state"]),
+            reason=row["reason"],
+        )
