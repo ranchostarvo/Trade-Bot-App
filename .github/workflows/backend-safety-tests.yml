@@ -57,3 +57,4 @@ jobs:
           python test_recovered_fill_accounting.py
           python test_order_lifecycle.py
           python test_runtime_lifecycle.py
+          python test_fill_checkpoint_recovery.py
