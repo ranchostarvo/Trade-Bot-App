@@ -22,17 +22,24 @@ class FleetOrchestrator:
         registry=None,
         allocator=None,
         kill_switch=None,
+        resource_coordinator=None,
     ):
         self.registry = registry or BotRegistry()
         self.allocator = allocator or CapitalAllocator(account_cash)
         self.kill_switch = kill_switch or KillSwitch()
+        self.resource_coordinator = resource_coordinator
 
     def provision(self, spec: BotSpec):
         if self.kill_switch.engaged:
             raise RuntimeError("Cannot provision while kill switch is engaged.")
         bot = self.registry.create(spec.bot_id)
         try:
-            self.allocator.reserve(spec.bot_id, spec.capital)
+            if self.resource_coordinator is not None:
+                self.resource_coordinator.reserve_bot_capital(
+                    spec.bot_id, spec.capital
+                )
+            else:
+                self.allocator.reserve(spec.bot_id, spec.capital)
             bot.mark_ready()
         except Exception:
             # Do not leave a half-provisioned bot with reserved capital.
