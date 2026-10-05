@@ -23,3 +23,7 @@ A green RC authorizes **controlled Alpaca paper validation only**. It does not a
 ## Failure policy
 
 A missing result is a failure. A corrupt persistent state fails closed. Tests are fixed at the model or implementation layer; safety invariants are not weakened to obtain green CI.
+
+
+## Cross-ledger crash recovery
+Buy fills use a persistent write-ahead transition journal. Runtime readiness is blocked until interrupted buy transitions are either deterministically reconciled or rejected fail-closed. CI exercises prepared, exposure-applied, allocation-applied, conflicting-state, and repeated-restart behavior.
