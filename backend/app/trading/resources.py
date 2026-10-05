@@ -97,3 +97,10 @@ class DurableResourceCoordinator:
             raise DurableResourceRejected(
                 f"No pending exposure exists for order {order_id}."
             )
+
+
+    def settle_pending_buy(self, order_id: str) -> None:
+        if not self.store.settle_pending_buy_atomically(order_id):
+            raise DurableResourceRejected(
+                f"No pending BUY exposure exists for order {order_id}."
+            )
