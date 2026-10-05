@@ -14,6 +14,7 @@ class ExecutionEngine:
         session_guard=None,
         capital_coordinator=None,
         available_cash_provider=None,
+        invested_capital_provider=None,
     ):
         self.risk = risk_engine or RiskEngine()
         self.kill_switch = kill_switch or KillSwitch()
@@ -23,6 +24,7 @@ class ExecutionEngine:
         self.session_guard = session_guard
         self.capital_coordinator = capital_coordinator
         self.available_cash_provider = available_cash_provider
+        self.invested_capital_provider = invested_capital_provider
 
     def execute(self, order: OrderRequest, client_order_id=None):
         self.kill_switch.validate()
@@ -88,10 +90,16 @@ class ExecutionEngine:
                 )
             try:
                 available_cash = self.available_cash_provider()
+                invested_capital = (
+                    self.invested_capital_provider()
+                    if self.invested_capital_provider is not None
+                    else 0
+                )
                 self.capital_coordinator.reserve(
                     client_order_id,
                     approval["notional"],
                     available_cash,
+                    invested_capital=invested_capital,
                 )
             except RiskRejected:
                 raise
