@@ -54,7 +54,7 @@ class BotBatchPreflight:
 
         if self.capital_coordinator is not None and self.exposure_ledger is not None:
             invested = self.exposure_ledger.total_invested
-            reserved = self.capital_coordinator.total_reserved
+            reserved = self.capital_coordinator.allocated
             ceiling = self.capital_coordinator.config.max_total_allocated
             if invested + reserved + total_notional > ceiling:
                 raise RiskRejected("Bot batch exceeds combined portfolio capital ceiling.")
