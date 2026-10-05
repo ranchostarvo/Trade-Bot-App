@@ -10,8 +10,9 @@ class DurableExecutionWorkflow:
 
     execution: object
     store: object
+    resources: object = None
 
-    def process(self, order_id, request, account_state=None):
+    def process(self, order_id, request, account_state=None, bot_id=None):
         if not order_id or not order_id.strip():
             raise ValueError("Order id is required.")
 
@@ -27,6 +28,18 @@ class DurableExecutionWorkflow:
             self.execution.risk.validate(request, account_state=account_state)
             managed.transition(OrderState.VALIDATED)
             self.store.save_managed_order(managed)
+
+            exposure_reserved = False
+            if self.resources is not None:
+                if not bot_id or not bot_id.strip():
+                    raise ValueError(
+                        "bot_id is required when durable resources are enabled."
+                    )
+                if request.side.lower() == "buy":
+                    self.resources.reserve_symbol_exposure(
+                        bot_id, request.symbol, request.notional
+                    )
+                    exposure_reserved = True
 
             # The order key was already reserved atomically with CREATED state.
             result = self.execution.execute(
@@ -45,6 +58,13 @@ class DurableExecutionWorkflow:
                 "idempotency_key": order_id,
             }
         except Exception as exc:
+            if (
+                self.resources is not None
+                and locals().get("exposure_reserved", False)
+            ):
+                self.resources.release_symbol_exposure(
+                    bot_id, request.symbol, request.notional
+                )
             if not managed.terminal:
                 managed.transition(OrderState.REJECTED, reason=str(exc))
                 self.store.save_managed_order(managed)
