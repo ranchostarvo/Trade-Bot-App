@@ -8,6 +8,7 @@ from .account_state import AlpacaAccountStateProvider
 from .equity_baseline import EquityBaselineStore
 from .execution import ExecutionEngine
 from .fill_accounting import FillAccounting
+from .fill_checkpoint import FillCheckpointStore
 from .exchange_calendar import AlpacaExchangeCalendar
 from .market_session import USMarketSessionClock
 from .session_guard import MarketSessionGuard
@@ -48,6 +49,10 @@ class RuntimePaths:
     @property
     def position_snapshot(self):
         return self.root / "position_snapshot.json"
+
+    @property
+    def fill_checkpoint(self):
+        return self.root / "fill_checkpoint.json"
 
 
 def build_paper_runtime(
@@ -103,10 +108,12 @@ def build_paper_runtime(
     tracker = OrderTracker(broker)
     position_store = PositionSnapshotStore(paths.position_snapshot)
     fill_accounting = FillAccounting(position_store)
+    fill_checkpoint = FillCheckpointStore(paths.fill_checkpoint)
     recovery = RecoveryManager(
         tracker,
         journal,
         fill_accounting=fill_accounting,
+        fill_checkpoint_store=fill_checkpoint,
     )
     position_recovery = PositionRecoveryManager(
         PositionReconciler(broker),
