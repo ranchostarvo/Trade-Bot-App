@@ -67,3 +67,16 @@ class AlpacaAccountStateProvider:
             start_of_day_equity=start_equity,
             current_equity=current_equity,
         )
+
+
+    def get_available_cash(self):
+        account = self.alpaca.get_account()
+        if account.get("trading_blocked") or account.get("account_blocked"):
+            raise RiskRejected("Alpaca account is blocked for trading.")
+        try:
+            cash = Decimal(str(account["cash"]))
+        except (KeyError, InvalidOperation, TypeError) as exc:
+            raise RiskRejected("Invalid Alpaca cash data.") from exc
+        if cash < 0:
+            raise RiskRejected("Alpaca cash cannot be negative.")
+        return cash
