@@ -11,12 +11,14 @@ class ExecutionEngine:
         account_state_provider=None,
         broker=None,
         submission_ledger=None,
+        session_guard=None,
     ):
         self.risk = risk_engine or RiskEngine()
         self.kill_switch = kill_switch or KillSwitch()
         self.account_state_provider = account_state_provider
         self.broker = broker
         self.submission_ledger = submission_ledger
+        self.session_guard = session_guard
 
     def execute(self, order: OrderRequest, client_order_id=None):
         self.kill_switch.validate()
@@ -42,6 +44,19 @@ class ExecutionEngine:
 
         if self.broker is None:
             raise RiskRejected("Broker is required for enabled execution.")
+
+        if self.session_guard is None:
+            raise RiskRejected(
+                "Verified market session guard is required for enabled execution."
+            )
+        try:
+            self.session_guard.validate()
+        except RiskRejected:
+            raise
+        except Exception as exc:
+            raise RiskRejected(
+                f"Unable to verify market session: {exc}"
+            ) from exc
 
         if self.submission_ledger is None:
             raise RiskRejected(
