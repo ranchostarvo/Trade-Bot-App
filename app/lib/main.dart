@@ -28,7 +28,7 @@ class _DashboardState extends State<Dashboard> {
   bool busy = true;
 
   @override
-  void initState() { super.initState(); refresh(); }
+  void initState() {\n    super.initState();\n    refresh();\n  }
 
   Future<void> refresh() async {
     setState(() { busy = true; error = null; });
