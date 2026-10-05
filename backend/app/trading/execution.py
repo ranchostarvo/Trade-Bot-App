@@ -1,12 +1,25 @@
+from .position import PositionValidator
 from .risk import OrderRequest, RiskEngine
 
 
 class ExecutionEngine:
-    def __init__(self, risk_engine=None):
+    def __init__(self, risk_engine=None, reconciler=None):
         self.risk = risk_engine or RiskEngine()
+        self.reconciler = reconciler
 
     def execute(self, order: OrderRequest, account_state=None):
         approval = self.risk.validate(order, account_state=account_state)
+
+        # Sells fail closed unless a broker-backed position view is available.
+        if order.side.lower() == "sell":
+            if self.reconciler is None:
+                raise RuntimeError(
+                    "Broker position reconciliation is required for sells."
+                )
+            account, positions = self.reconciler.reconcile()
+            if account.account_blocked or account.trading_blocked:
+                raise RuntimeError("Broker account is blocked from trading.")
+            PositionValidator(positions).validate(order)
 
         # Fail closed: broker submission is impossible until both controls
         # are explicitly changed in a later, separately tested milestone.
