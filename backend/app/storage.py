@@ -484,6 +484,12 @@ class SQLiteStore:
             raise ValueError("order_id is required.")
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
+            settled = connection.execute(
+                "SELECT outcome FROM order_settlements WHERE order_id = ?",
+                (order_id,),
+            ).fetchone()
+            if settled is not None:
+                return False
             row = connection.execute(
                 """
                 SELECT bot_id, symbol, notional
@@ -493,7 +499,7 @@ class SQLiteStore:
                 (order_id,),
             ).fetchone()
             if row is None:
-                return False
+                raise ValueError("No pending BUY exposure exists for settlement.")
 
             existing = connection.execute(
                 """
@@ -517,8 +523,14 @@ class SQLiteStore:
                 "DELETE FROM pending_exposure WHERE order_id = ?",
                 (order_id,),
             )
+            connection.execute(
+                """
+                INSERT INTO order_settlements(order_id, outcome)
+                VALUES (?, 'FILLED_BUY')
+                """,
+                (order_id,),
+            )
         return True
-
 
     def load_unresolved_orders(self):
         placeholders = ", ".join("?" for _ in ("SUBMITTED", "ACKNOWLEDGED"))
@@ -669,5 +681,29 @@ class SQLiteStore:
                 VALUES (?, 'FILLED_SELL')
                 """,
                 (order_id,),
+            )
+        return True
+
+
+    def settle_terminal_pending_atomically(self, order_id: str, outcome: str) -> bool:
+        order_id = order_id.strip()
+        outcome = outcome.strip().upper()
+        if outcome not in {"REJECTED", "CANCELED"}:
+            raise ValueError("Terminal outcome must be REJECTED or CANCELED.")
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            settled = connection.execute(
+                "SELECT outcome FROM order_settlements WHERE order_id = ?",
+                (order_id,),
+            ).fetchone()
+            if settled is not None:
+                return False
+            connection.execute(
+                "DELETE FROM pending_exposure WHERE order_id = ?",
+                (order_id,),
+            )
+            connection.execute(
+                "INSERT INTO order_settlements(order_id, outcome) VALUES (?, ?)",
+                (order_id, outcome),
             )
         return True
