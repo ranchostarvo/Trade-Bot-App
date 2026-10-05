@@ -26,14 +26,16 @@ def test_buy_signal_reaches_dry_run_execution_only():
     assert result["submitted"] is False
 
 
-def test_sell_signal_reaches_dry_run_execution_only():
+def test_sell_signal_fails_closed_without_reconciliation():
     pipeline = ProposalPipeline.development()
-    result = pipeline.process(
-        MarketSnapshot("SPY", Decimal("102"), Decimal("100"))
-    )
-    assert result["signal"] == "SELL"
-    assert result["status"] == "DRY_RUN"
-    assert result["submitted"] is False
+    try:
+        pipeline.process(
+            MarketSnapshot("SPY", Decimal("102"), Decimal("100"))
+        )
+    except RuntimeError as exc:
+        assert "reconciliation is required" in str(exc)
+        return
+    raise AssertionError("Sell proceeded without broker reconciliation.")
 
 
 def test_strategy_cannot_bypass_central_order_limit():
