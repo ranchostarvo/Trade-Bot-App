@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 from app.trading.fill_accounting import FillAccounting
 from app.trading.fill_checkpoint import FillCheckpointStore
 from app.trading.order_journal import OrderJournal
-from app.trading.order_tracker import OrderTracker
+from app.trading.order_tracker import OrderState, OrderTracker
 from app.trading.position_snapshot import PositionSnapshotStore
 from app.trading.recovery import RecoveryManager
 
@@ -29,15 +29,15 @@ with TemporaryDirectory() as directory:
     checkpoints = FillCheckpointStore(root / "fills.json")
 
     # Simulate an old journal record followed by successful fill accounting.
-    journal.record({
-        "order_id": "paper-1",
-        "symbol": "SPY",
-        "side": "buy",
-        "status": "partially_filled",
-        "filled_qty": "0.01",
-        "filled_avg_price": "770",
-        "terminal": False,
-    })
+    journal.record(OrderState(
+        order_id="paper-1",
+        symbol="SPY",
+        side="buy",
+        status="partially_filled",
+        filled_qty=Decimal("0.01"),
+        filled_avg_price=Decimal("770"),
+        terminal=False,
+    ))
     positions.set("SPY", Decimal("0.02"))
     checkpoints.set("paper-1", Decimal("0.02"))
 
