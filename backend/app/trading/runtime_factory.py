@@ -45,13 +45,19 @@ def build_paper_runtime(
     dry_run=True,
     max_order_notional=Decimal("500"),
     max_daily_loss_pct=Decimal("2.5"),
+    allow_test_broker=False,
 ):
     paths = RuntimePaths(Path(state_dir))
     broker = broker or AlpacaClient()
 
     # Hard safety boundary: this factory is paper-only.
     config = getattr(broker, "config", None)
-    if config is not None and not getattr(config, "paper", False):
+    if config is None:
+        if not allow_test_broker:
+            raise RuntimeError(
+                "Paper runtime requires a broker with explicit paper-mode configuration."
+            )
+    elif not getattr(config, "paper", False):
         raise RuntimeError("Paper runtime refuses a non-paper broker.")
 
     kill_switch = KillSwitch(
