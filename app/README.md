@@ -11,3 +11,5 @@ Build with `--dart-define=OPERATOR_API_URL=<operator-api-base-url>`. The console
 
 ## Verification
 CI validates Dart formatting, static analysis, widget tests, and the backend safety suite on every pull-request update.
+
+Operational UI verification requires a green pull-request workflow before this batch is closed.
