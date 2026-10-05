@@ -45,8 +45,13 @@ with tempfile.TemporaryDirectory() as directory:
     assert paths.equity_baseline.name == "equity_baseline.json"
     assert paths.order_journal.name == "order_journal.json"
     assert paths.submission_ledger.name == "submission_ledger.json"
+    assert paths.position_snapshot.name == "position_snapshot.json"
+    assert runtime.recovery_manager.fill_accounting is not None
+    assert runtime.position_recovery_manager is not None
 
     print("Persistent state paths wired: PASS")
+    print("Fill accounting wired: PASS")
+    print("Position recovery wired: PASS")
     print("Paper broker boundary enforced: PASS")
     print("Runtime startup: PASS")
     print("Default trading enabled: NO")
