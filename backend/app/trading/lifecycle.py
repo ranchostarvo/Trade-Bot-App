@@ -12,6 +12,7 @@ class OrderLifecycleService:
         capital_lifecycle=None,
         capital_transition=None,
         position_allocation_book=None,
+        sell_fill_checkpoints=None,
     ):
         self.execution_engine = execution_engine
         self.order_journal = order_journal
@@ -20,6 +21,7 @@ class OrderLifecycleService:
         self.capital_lifecycle = capital_lifecycle
         self.capital_transition = capital_transition
         self.position_allocation_book = position_allocation_book
+        self.sell_fill_checkpoints = sell_fill_checkpoints
 
     def submit(self, order, client_order_id):
         result = self.execution_engine.execute(
@@ -68,16 +70,20 @@ class OrderLifecycleService:
             elif state.side == "sell":
                 if self.position_allocation_book is None:
                     raise RiskRejected("Persistent position allocation book is required for sells.")
-                sell_key = f"sell:{state.order_id}:{state.filled_qty}"
-                # Fill accounting makes cumulative quantity replay-safe; only
-                # release cost basis when this sell checkpoint is new.
-                if not hasattr(self, "_sell_checkpoints"):
-                    self._sell_checkpoints = set()
-                if sell_key not in self._sell_checkpoints:
+                if self.sell_fill_checkpoints is None:
+                    raise RiskRejected("Persistent sell-fill checkpoint store is required.")
+                delta_qty = self.sell_fill_checkpoints.delta(
+                    state.order_id, state.filled_qty
+                )
+                if delta_qty > 0:
                     self.position_allocation_book.release_sell(
-                        state.symbol, state.filled_qty
+                        state.symbol, delta_qty
                     )
-                    self._sell_checkpoints.add(sell_key)
+                    # Commit only after cost-basis release succeeds. A crash
+                    # before this write remains fail-closed for reconciliation.
+                    self.sell_fill_checkpoints.commit(
+                        state.order_id, state.filled_qty
+                    )
         elif self.capital_lifecycle is not None:
             self.capital_lifecycle.reconcile(client_order_id, state)
 
