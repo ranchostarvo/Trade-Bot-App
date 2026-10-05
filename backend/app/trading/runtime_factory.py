@@ -5,6 +5,7 @@ from pathlib import Path
 from app.brokers.alpaca import AlpacaClient
 
 from .account_state import AlpacaAccountStateProvider
+from .capital_coordinator import CapitalConfig, PortfolioCapitalCoordinator
 from .equity_baseline import EquityBaselineStore
 from .execution import ExecutionEngine
 from .fill_accounting import FillAccounting
@@ -54,6 +55,10 @@ class RuntimePaths:
     def fill_checkpoint(self):
         return self.root / "fill_checkpoint.json"
 
+    @property
+    def capital_reservations(self):
+        return self.root / "capital_reservations.json"
+
 
 def build_paper_runtime(
     state_dir,
@@ -62,6 +67,8 @@ def build_paper_runtime(
     dry_run=True,
     max_order_notional=Decimal("500"),
     max_daily_loss_pct=Decimal("2.5"),
+    max_total_allocated=Decimal("50000"),
+    reserve_cash=Decimal("5000"),
     allow_test_broker=False,
 ):
     paths = RuntimePaths(Path(state_dir))
@@ -96,6 +103,13 @@ def build_paper_runtime(
         USMarketSessionClock(),
         AlpacaExchangeCalendar(broker),
     )
+    capital = PortfolioCapitalCoordinator(
+        CapitalConfig(
+            max_total_allocated=Decimal(str(max_total_allocated)),
+            reserve_cash=Decimal(str(reserve_cash)),
+        ),
+        paths.capital_reservations,
+    )
     execution = ExecutionEngine(
         risk_engine=risk,
         kill_switch=kill_switch,
@@ -103,6 +117,8 @@ def build_paper_runtime(
         broker=broker,
         submission_ledger=ledger,
         session_guard=session_guard,
+        capital_coordinator=capital,
+        available_cash_provider=account.get_available_cash,
     )
     journal = OrderJournal(paths.order_journal)
     tracker = OrderTracker(broker)
