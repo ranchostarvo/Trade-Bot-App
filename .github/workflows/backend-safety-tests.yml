@@ -52,3 +52,4 @@ jobs:
           python test_diagnostics.py
           python test_position_snapshot.py
           python test_position_recovery.py
+          python test_early_close.py
