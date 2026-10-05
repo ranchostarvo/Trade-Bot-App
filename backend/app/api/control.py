@@ -1,18 +1,15 @@
-from decimal import Decimal
-
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from app.api.auth import require_control_token
-from app.api.control_plane import ControlPlane
+from app.api.bootstrap import build_application_context
 from app.trading.orchestrator import BotSpec, FleetOrchestrator
-from app.trading.runtime import TradingRuntime
 
 app = FastAPI(title="Trade Bot Control API", version="0.1.0")
 
-# Development fallback remains broker-disconnected and fail-closed for trading readiness.
-_runtime = TradingRuntime.build(account_cash=Decimal("50000"))
-control_plane = ControlPlane.build(_runtime)
+# Startup policy selects an explicitly configured, fail-closed application context.
+_application_context = build_application_context()
+control_plane = _application_context.control_plane
 fleet = control_plane.fleet
 audit = control_plane.audit
 
