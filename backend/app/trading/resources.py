@@ -17,6 +17,24 @@ class DurableResourceCoordinator:
     account_equity: Decimal
     exposure_config: ExposureConfig = ExposureConfig()
 
+    @classmethod
+    def from_reconciler(cls, store, reconciler, exposure_config=None):
+        account = reconciler.account_snapshot()
+        if account.account_blocked or account.trading_blocked:
+            raise DurableResourceRejected(
+                "Broker account is blocked from resource allocation."
+            )
+        if account.cash < 0 or account.equity <= 0:
+            raise DurableResourceRejected(
+                "Broker account returned invalid cash or equity."
+            )
+        return cls(
+            store=store,
+            account_cash=account.cash,
+            account_equity=account.equity,
+            exposure_config=exposure_config or ExposureConfig(),
+        )
+
     def reserve_bot_capital(self, bot_id: str, amount: Decimal) -> None:
         if not self.store.reserve_capital_atomically(
             bot_id, amount, self.account_cash
