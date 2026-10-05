@@ -45,3 +45,4 @@ jobs:
           python test_paper_runtime.py
           python test_runtime_factory.py
           python test_runtime_status.py
+          python test_notional_execution.py
