@@ -7,9 +7,12 @@ class MarketSessionGuard:
         self.exchange_calendar = exchange_calendar
 
     def validate(self, moment=None):
-        session = self.session_clock.session(moment)
+        moment = moment or self.session_clock.now()
+        local = moment.astimezone(self.session_clock.timezone)
+        trading_day = local.date()
+
         try:
-            scheduled_open = self.exchange_calendar.is_open(session.trading_day)
+            exchange_session = self.exchange_calendar.get_session(trading_day)
         except RiskRejected:
             raise
         except Exception as exc:
@@ -17,12 +20,19 @@ class MarketSessionGuard:
                 f"Unable to validate market session: {exc}"
             ) from exc
 
-        verified = self.session_clock.session(
-            moment,
-            market_open=scheduled_open,
-        )
-        if not verified.regular_hours:
+        if exchange_session is None:
+            raise RiskRejected(
+                "Order execution is outside a verified exchange session."
+            )
+
+        current_time = local.time().replace(tzinfo=None)
+        if not (
+            exchange_session.open_time
+            <= current_time
+            < exchange_session.close_time
+        ):
             raise RiskRejected(
                 "Order execution is outside verified regular market hours."
             )
-        return verified
+
+        return exchange_session
