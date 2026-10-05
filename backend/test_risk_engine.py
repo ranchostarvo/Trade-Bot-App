@@ -1,10 +1,24 @@
 from decimal import Decimal
 
 from app.trading.execution import ExecutionEngine
-from app.trading.risk import OrderRequest, RiskRejected
+from app.trading.risk import (
+    AccountRiskState,
+    OrderRequest,
+    RiskRejected,
+)
 
 
-engine = ExecutionEngine()
+class TestAccountProvider:
+    def get_risk_state(self):
+        return AccountRiskState(
+            start_of_day_equity=Decimal("100000"),
+            current_equity=Decimal("100000"),
+        )
+
+
+engine = ExecutionEngine(
+    account_state_provider=TestAccountProvider()
+)
 
 print("=== TRADING APP v2.0 / RISK TEST ===")
 
