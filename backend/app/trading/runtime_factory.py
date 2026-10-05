@@ -8,6 +8,7 @@ from .account_state import AlpacaAccountStateProvider
 from .capital_coordinator import CapitalConfig, PortfolioCapitalCoordinator
 from .capital_lifecycle import CapitalLifecycle
 from .capital_transition import CapitalTransition
+from .capital_fill_checkpoint import CapitalFillCheckpointStore
 from .exposure_ledger import PortfolioExposureLedger
 from .equity_baseline import EquityBaselineStore
 from .execution import ExecutionEngine
@@ -81,6 +82,10 @@ class RuntimePaths:
     @property
     def sell_transition_journal(self):
         return self.root / "sell_transition_journal.json"
+
+    @property
+    def capital_fill_checkpoint(self):
+        return self.root / "capital_fill_checkpoint.json"
 
 
 def build_paper_runtime(
@@ -183,6 +188,7 @@ def build_paper_runtime(
         position_allocation_book=position_allocations,
         sell_fill_checkpoints=sell_checkpoints,
         sell_transition_journal=sell_journal,
+        capital_fill_checkpoints=CapitalFillCheckpointStore(paths.capital_fill_checkpoint),
     )
 
     return PaperTradingRuntime(
