@@ -1,9 +1,9 @@
-from types import SimpleNamespace
+from app.trading.runtime import RuntimeStatus
 from app.trading.operator_service import OperatorService
 
 class Runtime:
     def status(self):
-        return SimpleNamespace(started=True,ready=True,kill_switch_active=False,kill_switch_reason="",trading_enabled=False,dry_run=True,open_orders=0)
+        return RuntimeStatus(started=True,ready=True,kill_switch_active=False,kill_switch_reason="",trading_enabled=False,dry_run=True,open_orders=0)
 class Manager:
     def list_bots(self): return []
 service=OperatorService(Runtime(),Manager())
