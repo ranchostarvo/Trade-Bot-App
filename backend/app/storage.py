@@ -303,3 +303,47 @@ class SQLiteStore:
                 (bot_id,),
             )
         return cursor.rowcount == 1
+
+
+    def release_exposure_atomically(
+        self, bot_id: str, symbol: str, notional=None
+    ) -> bool:
+        from decimal import Decimal
+
+        bot_id = bot_id.strip()
+        symbol = symbol.strip().upper()
+        if not bot_id or not symbol:
+            raise ValueError("bot_id and symbol are required.")
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                """
+                SELECT notional FROM exposure_reservations
+                WHERE bot_id = ? AND symbol = ?
+                """,
+                (bot_id, symbol),
+            ).fetchone()
+            if row is None:
+                return False
+            held = Decimal(row["notional"])
+            release = held if notional is None else Decimal(str(notional))
+            if release <= 0 or release > held:
+                raise ValueError("Invalid exposure release amount.")
+            remaining = held - release
+            if remaining == 0:
+                connection.execute(
+                    """
+                    DELETE FROM exposure_reservations
+                    WHERE bot_id = ? AND symbol = ?
+                    """,
+                    (bot_id, symbol),
+                )
+            else:
+                connection.execute(
+                    """
+                    UPDATE exposure_reservations SET notional = ?
+                    WHERE bot_id = ? AND symbol = ?
+                    """,
+                    (str(remaining), bot_id, symbol),
+                )
+        return True
