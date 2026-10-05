@@ -3,7 +3,8 @@ import 'package:trade_bot_operator/main.dart';
 import 'package:trade_bot_operator/operator_client.dart';
 
 void main() {
-  testWidgets('operator console exposes no direct order control', (tester) async {
+  testWidgets('operator console exposes no direct order control',
+      (tester) async {
     await tester.pumpWidget(
       TradeBotApp(
         client: OperatorClient(baseUrl: 'http://127.0.0.1:1'),
