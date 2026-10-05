@@ -36,8 +36,8 @@ class DurableExecutionWorkflow:
                         "bot_id is required when durable resources are enabled."
                     )
                 if request.side.lower() == "buy":
-                    self.resources.reserve_symbol_exposure(
-                        bot_id, request.symbol, request.notional
+                    self.resources.reserve_pending_exposure(
+                        order_id, bot_id, request.symbol, request.notional
                     )
                     exposure_reserved = True
 
@@ -57,9 +57,7 @@ class DurableExecutionWorkflow:
                 self.resources is not None
                 and request.side.lower() == "sell"
             ):
-                self.resources.release_symbol_exposure(
-                    bot_id, request.symbol, request.notional
-                )
+                self.resources.release_pending_exposure(order_id)
                 exposure_released = True
 
             return {
