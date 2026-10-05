@@ -64,6 +64,19 @@ class SQLiteStore:
             )
             connection.execute(
                 """
+                CREATE TABLE IF NOT EXISTS order_recovery_context (
+                    order_id TEXT PRIMARY KEY,
+                    bot_id TEXT NOT NULL,
+                    symbol TEXT NOT NULL,
+                    side TEXT NOT NULL,
+                    quantity TEXT NOT NULL,
+                    estimated_price TEXT NOT NULL,
+                    broker_order_id TEXT
+                )
+                """
+            )
+            connection.execute(
+                """
                 CREATE TABLE IF NOT EXISTS capital_reservations (
                     bot_id TEXT PRIMARY KEY,
                     amount TEXT NOT NULL
@@ -518,3 +531,45 @@ class SQLiteStore:
             order.rejection_reason = row["reason"]
             orders.append(order)
         return orders
+
+
+    def save_order_recovery_context(
+        self, order_id, bot_id, symbol, side, quantity, estimated_price,
+        broker_order_id=None,
+    ):
+        values = [
+            str(value).strip()
+            for value in (order_id, bot_id, symbol, side, quantity, estimated_price)
+        ]
+        if not all(values):
+            raise ValueError("Complete order recovery context is required.")
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO order_recovery_context(
+                    order_id, bot_id, symbol, side, quantity,
+                    estimated_price, broker_order_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(order_id) DO UPDATE SET
+                    bot_id=excluded.bot_id,
+                    symbol=excluded.symbol,
+                    side=excluded.side,
+                    quantity=excluded.quantity,
+                    estimated_price=excluded.estimated_price,
+                    broker_order_id=excluded.broker_order_id
+                """,
+                (*values, broker_order_id),
+            )
+
+    def load_order_recovery_context(self, order_id):
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT order_id, bot_id, symbol, side, quantity,
+                       estimated_price, broker_order_id
+                FROM order_recovery_context
+                WHERE order_id = ?
+                """,
+                (order_id,),
+            ).fetchone()
+        return dict(row) if row is not None else None
