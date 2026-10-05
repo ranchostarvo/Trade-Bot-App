@@ -65,5 +65,6 @@ jobs:
           python test_capital_coordinator.py
           python test_capital_persistence.py
           python test_capital_execution_cleanup.py
+          python test_capital_runtime_wiring.py
           python test_readiness.py
           python test_readiness_summary.py
