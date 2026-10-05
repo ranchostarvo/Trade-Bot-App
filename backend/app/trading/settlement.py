@@ -19,9 +19,7 @@ class ExposureSettlement:
             raise SettlementRejected(
                 "BUY exposure settlement requires FILLED order state."
             )
-        self.resources.reserve_symbol_exposure(
-            bot_id, request.symbol, request.notional
-        )
+        self.resources.settle_pending_buy(managed_order.order_id)
 
     def settle_sell(self, managed_order, bot_id, request):
         if managed_order.state is not OrderState.FILLED:
