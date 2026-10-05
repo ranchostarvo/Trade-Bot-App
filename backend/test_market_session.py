@@ -31,3 +31,12 @@ print("Weekend detection: PASS")
 print("Timezone conversion: PASS")
 print("Broker interaction: NO")
 print("RESULT: PASS")
+
+# An authoritative exchange calendar can close a weekday (holiday).
+holiday = clock.session(
+    datetime(2026, 12, 25, 10, 0, tzinfo=ny),
+    market_open=False,
+)
+assert holiday.regular_hours is False
+
+print("Authoritative holiday closure override: PASS")
