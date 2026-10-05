@@ -62,7 +62,6 @@ class VirtualBroker:
             raise TimeoutError("virtual ambiguous timeout after transmission")
         if failure == "reject":
             order["status"] = "rejected"
-        self.events.append({"type": "transition", "client_order_id": str(client_order_id), "status": order["status"]})
         return deepcopy(order)
 
     def get_order_by_client_id(self, client_order_id):
@@ -83,6 +82,7 @@ class VirtualBroker:
         order["filled_avg_price"] = (
             None if filled_avg_price is None else str(filled_avg_price)
         )
+        self.events.append({"type": "transition", "client_order_id": str(client_order_id), "status": order["status"]})
         return deepcopy(order)
 
     def get_account(self):
