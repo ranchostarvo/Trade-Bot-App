@@ -7,6 +7,12 @@ from app.trading.runtime import RuntimeStatus
 
 class Runtime:
     def __init__(self):
+        self.recovery_manager = SimpleNamespace(
+            fill_checkpoint_store=object(),
+            fill_accounting=object(),
+        )
+        self.position_recovery_manager = object()
+        self.lifecycle_service = object()
         self.execution_engine = SimpleNamespace(
             risk=SimpleNamespace(
                 config=SimpleNamespace(
@@ -37,11 +43,17 @@ assert snapshot["risk_limits"]["max_daily_loss_pct"] == "2.5"
 assert "credentials" not in snapshot
 assert "api_key" not in str(snapshot).lower()
 assert "secret" not in str(snapshot).lower()
+assert snapshot["recovery"]["fill_checkpoint_enabled"] is True
+assert snapshot["recovery"]["fill_accounting_enabled"] is True
+assert snapshot["recovery"]["position_recovery_enabled"] is True
+assert snapshot["recovery"]["lifecycle_enabled"] is True
 
 print("=== TRADING APP v2.0 / DIAGNOSTICS ===")
 print("Runtime status exposed: PASS")
 print("Risk ceilings exposed: PASS")
 print("Trading-disabled state exposed: PASS")
 print("Credentials excluded: PASS")
+print("Recovery readiness exposed: PASS")
+print("Lifecycle readiness exposed: PASS")
 print("Broker interaction: NO")
 print("RESULT: PASS")
