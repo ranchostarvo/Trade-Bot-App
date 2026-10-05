@@ -32,9 +32,12 @@ class AlpacaConfig:
         if not secret_key:
             raise AlpacaError("ALPACA_SECRET_KEY is missing.")
 
-        # Safety interlock:
-        # paper mode must never point at the live endpoint.
-        if paper and "paper-api.alpaca.markets" not in base_url:
+        # Paper v1 is paper-only. A false flag or non-paper endpoint is a
+        # configuration error, not an alternate operating mode.
+        if not paper:
+            raise AlpacaError("Safety violation: Paper v1 requires ALPACA_PAPER=true.")
+
+        if base_url != "https://paper-api.alpaca.markets":
             raise AlpacaError(
                 "Safety violation: paper mode is not using "
                 "the Alpaca paper endpoint."
@@ -145,7 +148,7 @@ class AlpacaClient:
                 "Safety violation: order submission requires paper mode."
             )
 
-        if "paper-api.alpaca.markets" not in self.config.base_url:
+        if self.config.base_url != "https://paper-api.alpaca.markets":
             raise AlpacaError(
                 "Safety violation: refusing non-paper Alpaca endpoint."
             )
