@@ -7,6 +7,8 @@ from app.brokers.alpaca import AlpacaClient
 from .account_state import AlpacaAccountStateProvider
 from .capital_coordinator import CapitalConfig, PortfolioCapitalCoordinator
 from .capital_lifecycle import CapitalLifecycle
+from .capital_transition import CapitalTransition
+from .exposure_ledger import PortfolioExposureLedger
 from .equity_baseline import EquityBaselineStore
 from .execution import ExecutionEngine
 from .fill_accounting import FillAccounting
@@ -60,6 +62,10 @@ class RuntimePaths:
     def capital_reservations(self):
         return self.root / "capital_reservations.json"
 
+    @property
+    def portfolio_exposure(self):
+        return self.root / "portfolio_exposure.json"
+
 
 def build_paper_runtime(
     state_dir,
@@ -111,6 +117,11 @@ def build_paper_runtime(
         ),
         paths.capital_reservations,
     )
+    exposure = PortfolioExposureLedger(
+        paths.portfolio_exposure,
+        Decimal(str(max_total_allocated)),
+    )
+    capital_transition = CapitalTransition(capital, exposure)
     execution = ExecutionEngine(
         risk_engine=risk,
         kill_switch=kill_switch,
@@ -142,6 +153,7 @@ def build_paper_runtime(
         tracker,
         fill_accounting,
         capital_lifecycle=CapitalLifecycle(capital),
+        capital_transition=capital_transition,
     )
 
     return PaperTradingRuntime(
