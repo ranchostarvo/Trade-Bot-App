@@ -53,3 +53,4 @@ jobs:
           python test_position_snapshot.py
           python test_position_recovery.py
           python test_early_close.py
+          python test_fill_accounting.py
